@@ -33,6 +33,30 @@ If you are new to URP, we recommend reading the documents in this order:
 2. **[The S-Functional as a Universal Dynamical Objective](docs/S_Functional_Formalization.md)** - The rigorous multi-layer formalization of URP across logic, physics, and graphs.
 3. **[URP Technical Foundations](docs/URP_Technical_Foundations.pdf)** - The derivation of physical constants and gauge symmetries from S-maximization.
 
+## 🎯 Sims Gallery (Fully Reproducible)
+
+All simulations are pure URP, standalone, and match the results in the paper.  
+Just run `pip install -r requirements.txt` once, then:
+
+| Sim | File | What it shows | Command |
+|-----|------|---------------|---------|
+| **Helium 112-ppm** | `sims/helium_variational.py` | Flagship variational result (Z_eff ≈ 1.8366, IP = 24.590 eV) | `python sims/helium_variational.py` |
+| **Squeezed-Light Negative Energy** | `sims/squeezed_light_negative_energy.py` | Local ΔS deficits + global S growth + Q_S bound | `python sims/squeezed_light_negative_energy.py` |
+| **QCD Attractor Emergence** | `sims/qcd_attractor_emergence.py` | 0d points, 1d lines, 2d domains self-organize from noise | `python sims/qcd_attractor_emergence.py` |
+| **Causality Protection** | `sims/causality_protection_theorem.py` | Finite propagation speed = effective c (no superluminal signaling) | `python sims/causality_protection_theorem.py` |
+| **β & G Emergence** | `sims/beta_g_emergence.py` | Universal parameters β≈0.09 and G≈0.22 self-stabilize from S-max | `python sims/beta_g_emergence.py` |
+
+Every sim saves its plot automatically and prints a clear summary. Clone, run, reproduce — no setup headaches.
+
+---
+
+**Next sims coming soon:**
+- Multi-agent Graph-S cooperation (AI alignment demo)
+- Full 3D field evolution
+- Hybrid cavity + causality test
+
+Contributions and issues welcome — this is the public seed of the Universal Recursion Principle.
+
 ## Contributing
 
 This framework is actively expanding as new correspondences are found in information thermodynamics, quantum vacuum models, and AI alignment. If you are running simulations, testing the S-functional on neural network representations, or mapping URP to specific domains, pull requests are welcome.
