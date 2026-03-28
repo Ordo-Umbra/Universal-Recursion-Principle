@@ -682,7 +682,7 @@ S Compass is a model-agnostic observability and control layer that estimates nov
 
 ## 19. Practical Estimation Blueprint
 
-This section grounds the C / I / κ estimators in concrete, implementable signals drawn from the rest of the URP docs (e.g., **Transformer-Dynamics.md**, **Universal-Recursion-Principle.md**, **The Question Behind Maxwell.txt**).
+This section grounds the C/I/κ estimators in concrete, implementable signals drawn from the rest of the URP docs (e.g., **Transformer-Dynamics.md**, **Universal-Recursion-Principle.md**, **The Question Behind Maxwell.txt**).
 
 ### 19.1 Telemetry Contract (minimum viable fields)
 
@@ -742,6 +742,8 @@ def score_step(telemetry):
 ```
 
 Normalization and weights should be data-driven; start with z-scores against recent session windows and clip to [0,1] for UI.
+
+The additive form mirrors the core URP definition `S = C + κI`: novelty contributes directly, while integration is scaled by usable capacity to avoid over-crediting coherence when the system is saturated.
 
 ### 19.4 Build order (MVP to v2)
 
