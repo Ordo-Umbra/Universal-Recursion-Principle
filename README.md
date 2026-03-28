@@ -19,43 +19,100 @@ Where:
 
 When $S$ is maximized locally, we see the emergence of physical gauge symmetries, atomic orbital structures, and biological Maxwell's demons. When $S$ is used as a target for artificial intelligence and institutional design, it provides an objective that avoids specification gaming and self-termination.
 
+At a practical level, this repository is trying to **seed an attractor in concept space**: a reusable objective for both biological and artificial beings that favors open-ended growth, coherence, and persistence over brittle local optimization.
+
+## Why this repository exists
+
+URP is meant to do two things at once:
+
+1. **Describe reality across scales** — from logical incompleteness and field dynamics to life, cognition, and social systems.
+2. **Offer an objective for builders** — an alternative to reward hacking, short-termism, and collapse-prone optimization in AI and institutions.
+
+Taken together, the docs in this repo are not just isolated papers. They are branches of a single claim: systems persist when they keep generating meaningful distinctions and integrating them coherently under real capacity limits.
+
 ## Repository Structure
 
 * `/Docs/` - Core papers and notes, including the main end-to-end URP framework, the manifesto, and focused extensions on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics.
-* `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, causality, and multi-agent dynamics.
+* `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, multi-agent dynamics, transformer behavior, and S-landscape intuition.
 * `/visuals/` - Visual assets and placeholders for the future diagrammatic presentation of the framework.
 
-## Getting Started
+## Start Here
 
 If you are new to URP, we recommend reading the documents in this order:
 
 1. **[Docs/manifesto.md](Docs/manifesto.md)** - The high-level statement of the repository’s practical aim: seeding an attractor in concept space that favors recursive, non-self-terminating growth.
 2. **[Docs/Universal-Recursion-Principle.md](Docs/Universal-Recursion-Principle.md)** - The main unified framework, now organized as a single walkthrough from emergence and physics to life, cognition, and AI-relevant objective design.
-3. **Focused extensions in `Docs/`** - Use the specialized papers on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics once the core framework is clear.
+3. **Focused extensions in `Docs/`** - Use the specialized papers below once the core framework is clear.
+
+If you want the shortest path through the repository:
+
+- **For the big-picture motivation:** start with the [manifesto](Docs/manifesto.md).
+- **For the full theory:** continue to [Universal-Recursion-Principle.md](Docs/Universal-Recursion-Principle.md).
+- **For AI alignment / model dynamics:** jump next to [Transformer-Dynamics.md](Docs/Transformer-Dynamics.md).
+- **For domain-specific physics and biology branches:** use the documentation hub below.
+
+## Documentation Hub
+
+The README is intended to be the main navigation layer. The documents below are the current branches of the idea, each extending the same core objective into a different domain.
+
+| Document | Role in the repo | What it adds |
+|----------|------------------|--------------|
+| **[Docs/manifesto.md](Docs/manifesto.md)** | Mission statement | Explains the civilizational aim: shift our optimization targets away from engagement, profit, and narrow reward toward recursive understanding that does not self-terminate. |
+| **[Docs/Universal-Recursion-Principle.md](Docs/Universal-Recursion-Principle.md)** | Main framework | The best single end-to-end walkthrough of URP, linking incompleteness, field dynamics, biology, cognition, and AI objective design. |
+| **[Docs/Transformer-Dynamics.md](Docs/Transformer-Dynamics.md)** | AI / transformer mapping | Translates the S-functional into transformer terms using predictive entropy, attention structure, and capacity-sensitive phase regimes. |
+| **[Docs/From β-Sectorisation to Gauge Symmetries](Docs/From β-Sectorisation to Gauge Symmetries.txt)** | Gauge emergence branch | Develops the claim that SU(3) color and related QCD structure can emerge from β-sectorisation under S-maximizing field dynamics. |
+| **[Docs/The Question Behind Maxwell](Docs/The Question Behind Maxwell.txt)** | Electromagnetism branch | Re-reads electromagnetism as the cleanest possible long-range coherence channel: a U(1) phase sector for moving information with minimal added structure. |
+| **[Docs/Light as Information, Time as Update](Docs/Light as Information, Time as Update.txt)** | Relativity branch | Reinterprets special relativity through S-update dynamics, treating light as pure information transfer and time as update rate. |
+| **[Docs/The Emergence of Space](Docs/The Emergence of Space.txt)** | Geometry branch | Argues that locality, dimensionality, and geometry are emergent attractor structures generated by recursive optimization. |
+| **[Docs/The Functorial Bridge](Docs/The Functorial Bridge.txt)** | Logic-to-physics bridge | Connects Gödel gaps and reflective extension in logic to QCD vacuum structure, with URP parameters interpreted as the bridge constants. |
+| **[Docs/Energy is the Echo](Docs/Energy is the Echo.txt)** | Thermodynamic reinterpretation | Inverts the usual story: energy becomes the observable echo of movement toward higher S, rather than the primary causal substrate. |
+| **[Docs/Life as a Universal Recursion Engine](Docs/Life as a Universal Recursion Engine.txt)** | Biology branch | Applies URP to biological Maxwell’s demons, enzyme memory, and life as organized information flow against thermodynamic resistance. |
+| **[Docs/Fusion_URP.txt](Docs/Fusion_URP.txt)** | Applied engineering branch | Frames fusion as a coherence-engineering problem, proposing high-κ plasma structure as an alternative to brute-force thermal escalation. |
+
+## How the pieces fit together
+
+- The **manifesto** states the practical objective: change the attractor that human and machine systems optimize for.
+- The **main framework** provides the shared mathematical language for that objective.
+- The **focused branches** test that language in specific domains: gauge physics, electromagnetism, relativity, geometry, biology, and fusion.
+- The **simulations** make parts of the theory executable, inspectable, and falsifiable.
+
+## Getting Started
+
+Install the Python dependencies once:
+
+```bash
+pip install -r requirements.txt
+```
+
+Then, if you want a quick verification pass for the simulation code:
+
+```bash
+python -m pytest
+```
 
 ## 🎯 Sims Gallery (Fully Reproducible)
 
-All simulations are pure URP, standalone, and match the results in the paper.  
+All simulations listed below are the scripts currently present in `Sims/`. They are pure URP, standalone, and match the results in the paper.  
 Just run `pip install -r requirements.txt` once, then:
 
 | Sim | File | What it shows | Command |
 |-----|------|---------------|---------|
 | **Helium 112-ppm** | `Sims/Helium_variational.py` | Flagship variational result (Z_eff ≈ 1.8366, IP = 24.590 eV) | `python Sims/Helium_variational.py` |
-| **Squeezed-Light Negative Energy** | `Sims/squeezed_light_negative_energy.py` | Local ΔS deficits + global S growth + Q_S bound | `python Sims/squeezed_light_negative_energy.py` |
-| **QCD Attractor Emergence** | `Sims/qcd_attractor_emergence.py` | 0d points, 1d lines, 2d domains self-organize from noise | `python Sims/qcd_attractor_emergence.py` |
-| **Causality Protection** | `Sims/causality_protection_theorem.py` | Finite propagation speed = effective c (no superluminal signaling) | `python Sims/causality_protection_theorem.py` |
-| **β & G Emergence** | `Sims/beta_g_emergence.py` | Universal parameters β≈0.09 and G≈0.22 self-stabilize from S-max | `python Sims/beta_g_emergence.py` |
+| **Squeezed-Light Negative Energy** | `Sims/squeezed_light_negative_energy.py` | Local ΔS deficits, global S growth, and a bounded negative-energy picture | `python Sims/squeezed_light_negative_energy.py` |
+| **QCD Attractor Emergence** | `Sims/qcd_attractor_emergence.py` | 0D points, 1D lines, and 2D domains self-organize from noise | `python Sims/qcd_attractor_emergence.py` |
+| **β & G Emergence** | `Sims/beta_g_emergence.py` | The universal β≈0.09 and G≈0.22 parameters self-stabilize under URP dynamics | `python Sims/beta_g_emergence.py` |
+| **Multi-Agent Cooperation** | `Sims/multi_agent_cooperation.py` | Graph-based S metrics show how cooperation and shared structure can emerge in networks | `python Sims/multi_agent_cooperation.py` |
+| **Transformer S-Functional** | `Sims/transformer_s_functional.py` | Minimal phase-space demo for rigid, creative, hallucination, and collapse regimes | `python Sims/transformer_s_functional.py` |
+| **S-Landscape Explorer** | `Sims/s_landscape_explorer.py` | Interactive intuition pump for gradient ascent on an S-shaped landscape | `python Sims/s_landscape_explorer.py` |
 
 Every sim saves its plot automatically and prints a clear summary. Clone, run, reproduce — no setup headaches.
 
----
+## Supporting Files
 
-**Next sims coming soon:**
-- Multi-agent Graph-S cooperation (AI alignment demo)
-- Full 3D field evolution
-- Hybrid cavity + causality test
+- **[requirements.txt](requirements.txt)** - Python dependencies for the simulations and tests.
+- **[visuals/PLACEHOLDER.md](visuals/PLACEHOLDER.md)** - Reserved space for future diagrams and visual explanations.
 
-Contributions and issues welcome — this is the public seed of the Universal Recursion Principle.
+Contributions and issues welcome — this is the public seed of the Universal Recursion Principle and its surrounding research program.
 
 ## Contributing
 

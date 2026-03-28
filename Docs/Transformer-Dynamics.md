@@ -125,4 +125,4 @@ Using this formalization, we can map observed LLM behavior strictly to quadrants
     *   Complete generative failure or trivial output.
 
 ---
-*Note: A minimal Python simulation demonstrating these regimes is available in `sims/transformer_s_functional.py`.*
+*Note: A minimal Python simulation demonstrating these regimes is available in `Sims/transformer_s_functional.py`.*
