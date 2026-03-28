@@ -653,6 +653,19 @@ That way the system can evolve without making historical metrics uninterpretable
 - layerwise S estimation
 - training and evaluation integrations
 
+#### v3 white-box outline
+
+- **Adapters**: capture token-level logprobs, attention maps, KV norms, gradient or Fisher diagonals (when safe), and internal activations/embeddings. Preserve per-layer metadata (layer idx, head idx, position).
+- **Layerwise C/I/κ**:
+  - C: per-layer predictive entropy, branch diversity across heads, activation sparsity metrics.
+  - I: attention concentration/entropy, head connectivity structure, residual stream coherence vs. retrieved/support signals.
+  - κ: attention variance and saturation, context pressure by layer, instability markers (e.g., exploding norms, retry/backoff signals during decoding).
+- **Scoring pipeline**: compute per-layer S, roll up to token, step, and session; track deltas across layers to locate collapse or divergence early.
+- **Calibration**: align internal metrics to black-box outputs via held-out traces; store normalization stats per model/version; expose confidence on layerwise S.
+- **Policy hooks**: allow interventions that target layers/heads (e.g., head dropout, temperature/rep-pen adjustments, routing to safer variants) when S drops below thresholds.
+- **Evaluation**: maintain regression suite with white-box traces (teacher-forcing and free-running) to benchmark S against QA/factuality and hallucination labels; include drift monitors for attention patterns.
+- **Privacy/safety**: gate capture of gradients/activations behind feature flags; strip PII; enforce retention windows; avoid storing raw inputs when not required for metrics.
+
 ---
 
 ## 17. Example Runtime Scenario
