@@ -1,0 +1,71 @@
+"""
+S Compass — runtime observability and control layer for AI systems.
+
+Based on the URP S-functional  S = C + κI  (see Docs/S-Compass-System-Design.md).
+
+Quick start::
+
+    from s_compass import SCompassGateway, StepInput
+
+    gw = SCompassGateway()
+    gw.start_session("sess_001")
+
+    result = gw.submit_step(StepInput(
+        session_id="sess_001",
+        prompt="Explain the S Compass.",
+        output_text="S Compass is a telemetry and policy layer ...",
+    ))
+    print(result["scores"], result["regime"])
+"""
+
+from .gateway import SCompassGateway
+from .schemas import (
+    Claim,
+    Event,
+    Evidence,
+    GraphEdge,
+    PolicyAction,
+    RetrievedChunk,
+    ScoreSnapshot,
+    StepInput,
+    VALID_EVENT_TYPES,
+)
+from .estimators import (
+    capacity_field,
+    estimate_c,
+    estimate_i,
+    estimate_kappa,
+    normalize,
+)
+from .scoring import classify_regime, score_step, score_step_dict
+from .policy import evaluate as evaluate_policy
+from .store import EvaluationStore
+
+__all__ = [
+    # Gateway
+    "SCompassGateway",
+    # Schemas
+    "Claim",
+    "Event",
+    "Evidence",
+    "GraphEdge",
+    "PolicyAction",
+    "RetrievedChunk",
+    "ScoreSnapshot",
+    "StepInput",
+    "VALID_EVENT_TYPES",
+    # Estimators
+    "capacity_field",
+    "estimate_c",
+    "estimate_i",
+    "estimate_kappa",
+    "normalize",
+    # Scoring
+    "classify_regime",
+    "score_step",
+    "score_step_dict",
+    # Policy
+    "evaluate_policy",
+    # Store
+    "EvaluationStore",
+]
