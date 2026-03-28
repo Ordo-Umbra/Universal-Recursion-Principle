@@ -11,7 +11,7 @@ I estimator and the coherence graph (§4.4 internal modules 1–2).
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from .schemas import Claim, Evidence, GraphEdge, RetrievedChunk, StepInput
 
@@ -54,7 +54,7 @@ def extract_claims(
     output_text: str,
     *,
     min_words: int = 4,
-    trace_id: str | None = None,
+    trace_id: Optional[str] = None,
 ) -> List[Claim]:
     """Extract candidate claims from model output text.
 

@@ -17,7 +17,7 @@ wired to a shared :class:`SCompassGateway`.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from flask import Flask, jsonify, request
 
@@ -27,7 +27,7 @@ from .policy import evaluate as evaluate_policy
 from .scoring import classify_regime
 
 
-def create_app(gateway: SCompassGateway | None = None) -> Flask:
+def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
     """Create and configure the Flask application.
 
     Parameters

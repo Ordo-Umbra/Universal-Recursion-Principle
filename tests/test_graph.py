@@ -131,8 +131,8 @@ class TestGraphMetrics:
         claims, evidences, edges = _sample_data()
         g = build_coherence_graph(claims, evidences, edges)
         ratio = weakly_connected_ratio(g)
-        # Two disconnected components each with 2 nodes → ratio = 0.5
-        assert 0.0 < ratio <= 1.0
+        # Two disconnected pairs (claim→evidence); largest has 2/4 nodes
+        assert ratio == pytest.approx(0.5)
 
     def test_weakly_connected_ratio_empty(self):
         g = build_coherence_graph([], [], [])
