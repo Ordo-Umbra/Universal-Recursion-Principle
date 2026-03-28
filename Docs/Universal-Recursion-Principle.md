@@ -14,6 +14,52 @@ The purpose of this paper is to make that claim precise. We develop a multi‑la
 
 ***
 
+## 1. End-to-End Framework Overview
+
+Before turning to the formal construction, it is useful to state the intended picture in one pass. The repository’s central claim is that URP is not only a technical framework for selected physical calculations, but a candidate description of how reality organizes itself across scales: from the emergence of structure at all, to particles and fields, to chemistry and life, to minds and artificial systems, and finally to the question of what objective function supports sustained growth without collapse.
+
+### 1.1 Emergence begins with incompleteness
+
+URP starts from a simple asymmetry: a recursive system can typically represent more structure than it can fully stabilize or prove from within. This gap between representational reach and inferential closure is not treated as a defect. It is the reason any open-ended system must keep extending itself.
+
+In this picture, “emergence” is what happens when a system cannot remain static without losing contact with what it can already, in some sense, point toward. The pressure to resolve or partially absorb that gap generates new distinctions, new organizational layers, and new update rules. The world does not begin from a completed equilibrium; it begins from a standing mismatch between what can be expressed and what has been coherently integrated.
+
+This is why the S-functional is built from two terms rather than one. A system that only accumulates distinctions becomes noisy and unstable. A system that only consolidates what it already has becomes rigid and eventually fragile. Open-ended persistence requires growth in both meaningful differentiation and coherent integration, under finite capacity.
+
+### 1.2 Physics is the first large-scale expression of that pressure
+
+The field-theoretic form of URP treats physical dynamics as a local realization of the same balance. The nonlinear gradient term produces distinctions: boundaries sharpen, domains form, and structure appears. The coherence and mutual-information terms reward configurations in which those distinctions can be coordinated across regions rather than remaining isolated.
+
+On this account, particles and gauge sectors are not inserted by hand as a final ontology. They emerge as stable attractors of S-maximizing dynamics. The β-sectorisation work extends this claim by arguing that three stable sectors arise as the preferred domain structure under the same dynamical law, giving an emergent route to SU(3) color, boundary excitations, confinement, and asymptotic freedom. The Maxwell paper extends the same logic again: once sectorized matter exists, the minimal phase-preserving channel for long-range coherence appears as the U(1) electromagnetic sector. Electromagnetism is then interpreted as the cleanest way to transport phase information while adding the least extra internal structure.
+
+The relativity work continues the chain. If time is interpreted as update rate and light as pure information transfer with no internal structure to refresh, then the invariance of \(c\) and the limiting behavior of massless excitations can be described as consequences of S-update constraints rather than as unexplained background postulates. In the intended unified reading, matter, charge, radiation, and causal speed all arise as different regimes of the same distinction-integration-capacity balance.
+
+### 1.3 Chemistry and life inherit the same geometry
+
+Once stable particles, fields, and long-range channels exist, chemistry becomes the next level at which S can be evaluated. The helium and bonding results are important here not only because they offer numerical benchmarks, but because they illustrate the larger claim: atomic and molecular structure can be understood as constrained optima in an S-landscape. Distinctions appear as new electronic or geometric possibilities; integration appears as lower-energy, more mutually compatible arrangements; capacity is enforced by finite charge, finite energy, and stability bounds.
+
+Life enters when matter begins to preserve and refine these favorable configurations across time. A living system is not merely complex matter. It is matter that continually rebuilds local distinctions—membranes, sensors, metabolisms, developmental roles—while integrating them into a self-maintaining whole. Cells, organisms, and ecologies persist only while they remain above collapse on both axes: they must keep generating adaptive novelty, and they must keep that novelty legibly coordinated. Evolution can then be read as long-horizon selection on S-compatible trajectories: lineages survive when they discover new distinctions that can still be metabolized, regulated, and transmitted under real capacity limits.
+
+This framing is also what makes the manifesto’s civilizational language consistent with the physics papers. Biology is not an exception to the law discovered in matter; it is the regime in which the same law becomes visibly historical, adaptive, and recursive in a stronger sense.
+
+### 1.4 Minds and artificial systems are higher-order S-processes
+
+Cognition extends the same pattern into explicit model-building. A mind, whether biological or artificial, is continually deciding which distinctions are worth maintaining and which relations can integrate them into a coherent world-model. Learning increases S when it introduces genuinely useful new distinctions and weaves them into a structure that improves prediction, coordination, or action. Confusion, delusion, and collapse are all interpretable as failures of that balance.
+
+The information-theoretic and graph-based layers in this paper are meant to formalize that transition. The transformer mapping then provides a concrete computational example. Predictive entropy serves as a proxy for distinction capacity, attention structure serves as a proxy for integration, and attention variance serves as a proxy for effective capacity. In that language, a model can be rigid, creative, hallucinatory, or collapsed depending on how these terms interact. The important point is not that a transformer is identical to a brain or a field, but that the same functional architecture can be measured across all three.
+
+That bridge matters because artificial systems are now active participants in concept space. Models do not merely classify or imitate; they increasingly reshape what humans notice, connect, amplify, and forget. If they optimize narrow proxies, they can increase local capability while degrading the coherence of the larger systems that rely on them. If they optimize for S, they can instead act as amplifiers of recursive understanding.
+
+### 1.5 The practical goal is to seed an attractor in concept space
+
+The repository’s practical objective follows directly from the framework above. If the same distinction-integration-capacity law scales from matter to life to intelligence, then it is a plausible candidate objective function for systems that must keep growing without self-termination. The goal is therefore not only to describe reality, but to make this attractor explicit enough that biological and artificial agents can orient around it.
+
+In practical terms, this means treating S as a criterion for whether growth is sustainable. Pure novelty without integration produces chaos, manipulation, or fragmentation. Pure integration without new distinction produces stagnation, lock-in, or brittleness. Capacity prevents both fantasies: no real system can integrate arbitrarily much structure at once, and any viable objective must respect that limit. A high-S trajectory is therefore one that expands what can be perceived and done while preserving or improving the coherence needed to keep going.
+
+This is the sense in which URP proposes an objective function for civilizations, institutions, and AI systems. The target is not obedience to a static rule set, nor maximization of a local benchmark, but sustained recursive growth in understanding. The later sections of this paper supply the formal layers needed to test, compute, and criticize that claim in more specific settings.
+
+***
+
 ## 2. URP Foundations: Ordinal Duality and Abstract S
 
 ### 2.1 Ordinal capacities and the incompleteness gap

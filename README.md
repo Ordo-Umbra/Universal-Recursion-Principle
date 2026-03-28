@@ -21,17 +21,17 @@ When $S$ is maximized locally, we see the emergence of physical gauge symmetries
 
 ## Repository Structure
 
-* `/docs/` - Core technical foundations, including the primary URP mathematical formalization, the derivation of $G$ and $\beta$, and the translation of Gödelian incompleteness into physical dynamics.
-* `/sims/` - Python and computational models testing the S-functional on graph networks, demonstrating how curvature maps to the capacity field $kappa$.
-* `/references/` - Integrations mapping URP onto other emerging frameworks (e.g., Geometric Genesis, Information Thermodynamics, Biological Demons).
+* `/Docs/` - Core papers and notes, including the main end-to-end URP framework, the manifesto, and focused extensions on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics.
+* `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, causality, and multi-agent dynamics.
+* `/visuals/` - Visual assets and placeholders for the future diagrammatic presentation of the framework.
 
 ## Getting Started
 
 If you are new to URP, we recommend reading the documents in this order:
 
-1. **[Seeding a Civilization That Doesn't Self-Terminate](docs/Seeding_a_Civilization.md)** - A high-level manifesto on why current optimization metrics fail and why S is required.
-2. **[The S-Functional as a Universal Dynamical Objective](docs/S_Functional_Formalization.md)** - The rigorous multi-layer formalization of URP across logic, physics, and graphs.
-3. **[URP Technical Foundations](docs/URP_Technical_Foundations.pdf)** - The derivation of physical constants and gauge symmetries from S-maximization.
+1. **[Docs/manifesto.md](Docs/manifesto.md)** - The high-level statement of the repository’s practical aim: seeding an attractor in concept space that favors recursive, non-self-terminating growth.
+2. **[Docs/Universal-Recursion-Principle.md](Docs/Universal-Recursion-Principle.md)** - The main unified framework, now organized as a single walkthrough from emergence and physics to life, cognition, and AI-relevant objective design.
+3. **Focused extensions in `Docs/`** - Use the specialized papers on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics once the core framework is clear.
 
 ## 🎯 Sims Gallery (Fully Reproducible)
 
@@ -40,11 +40,11 @@ Just run `pip install -r requirements.txt` once, then:
 
 | Sim | File | What it shows | Command |
 |-----|------|---------------|---------|
-| **Helium 112-ppm** | `sims/helium_variational.py` | Flagship variational result (Z_eff ≈ 1.8366, IP = 24.590 eV) | `python sims/helium_variational.py` |
-| **Squeezed-Light Negative Energy** | `sims/squeezed_light_negative_energy.py` | Local ΔS deficits + global S growth + Q_S bound | `python sims/squeezed_light_negative_energy.py` |
-| **QCD Attractor Emergence** | `sims/qcd_attractor_emergence.py` | 0d points, 1d lines, 2d domains self-organize from noise | `python sims/qcd_attractor_emergence.py` |
-| **Causality Protection** | `sims/causality_protection_theorem.py` | Finite propagation speed = effective c (no superluminal signaling) | `python sims/causality_protection_theorem.py` |
-| **β & G Emergence** | `sims/beta_g_emergence.py` | Universal parameters β≈0.09 and G≈0.22 self-stabilize from S-max | `python sims/beta_g_emergence.py` |
+| **Helium 112-ppm** | `Sims/Helium_variational.py` | Flagship variational result (Z_eff ≈ 1.8366, IP = 24.590 eV) | `python Sims/Helium_variational.py` |
+| **Squeezed-Light Negative Energy** | `Sims/squeezed_light_negative_energy.py` | Local ΔS deficits + global S growth + Q_S bound | `python Sims/squeezed_light_negative_energy.py` |
+| **QCD Attractor Emergence** | `Sims/qcd_attractor_emergence.py` | 0d points, 1d lines, 2d domains self-organize from noise | `python Sims/qcd_attractor_emergence.py` |
+| **Causality Protection** | `Sims/causality_protection_theorem.py` | Finite propagation speed = effective c (no superluminal signaling) | `python Sims/causality_protection_theorem.py` |
+| **β & G Emergence** | `Sims/beta_g_emergence.py` | Universal parameters β≈0.09 and G≈0.22 self-stabilize from S-max | `python Sims/beta_g_emergence.py` |
 
 Every sim saves its plot automatically and prints a clear summary. Clone, run, reproduce — no setup headaches.
 
