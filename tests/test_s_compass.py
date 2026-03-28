@@ -358,3 +358,78 @@ class TestGateway:
         gw.submit_step(_make_step(session_id="a"))
         assert len(gw.get_session_scores("a")) == 1
         assert len(gw.get_session_scores("b")) == 0
+
+
+# ===========================================================================
+# Rolling window statistics (EvaluationStore.rolling_window_stats)
+# ===========================================================================
+
+class TestRollingWindowStats:
+    def _store_with_scores(self, n: int) -> EvaluationStore:
+        store = EvaluationStore()
+        store.start_session("s1")
+        for k in range(n):
+            v = (k + 1) / n
+            store.add_score(
+                "s1",
+                ScoreSnapshot(c=v, i=v * 0.5, kappa=0.8, s=v + 0.8 * v * 0.5, regime="creative-grounded"),
+            )
+        return store
+
+    def test_nonexistent_session_returns_none(self):
+        store = EvaluationStore()
+        assert store.rolling_window_stats("missing") is None
+
+    def test_empty_session_count_zero(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        result = store.rolling_window_stats("s1", window=5)
+        assert result["count"] == 0
+        assert result["stats"] == {}
+
+    def test_count_capped_at_window(self):
+        store = self._store_with_scores(20)
+        result = store.rolling_window_stats("s1", window=5)
+        assert result["count"] == 5
+
+    def test_count_uses_all_when_fewer_than_window(self):
+        store = self._store_with_scores(3)
+        result = store.rolling_window_stats("s1", window=10)
+        assert result["count"] == 3
+
+    def test_stats_fields_present(self):
+        store = self._store_with_scores(5)
+        result = store.rolling_window_stats("s1", window=5)
+        for field in ("c", "i", "kappa", "s"):
+            assert field in result["stats"]
+            for stat_key in ("mean", "std", "min", "max"):
+                assert stat_key in result["stats"][field]
+
+    def test_mean_correct(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        for c_val in (0.2, 0.4, 0.6):
+            store.add_score("s1", ScoreSnapshot(c=c_val, i=0.5, kappa=0.8, s=1.0, regime="creative-grounded"))
+        result = store.rolling_window_stats("s1", window=3)
+        assert result["stats"]["c"]["mean"] == pytest.approx(0.4, abs=1e-4)
+
+    def test_std_zero_for_constant_series(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        for _ in range(5):
+            store.add_score("s1", ScoreSnapshot(c=0.5, i=0.5, kappa=0.5, s=0.75, regime="creative-grounded"))
+        result = store.rolling_window_stats("s1", window=5)
+        assert result["stats"]["c"]["std"] == pytest.approx(0.0, abs=1e-6)
+
+    def test_window_selects_most_recent(self):
+        """The window should include only the *most recent* snapshots."""
+        store = EvaluationStore()
+        store.start_session("s1")
+        # Add 5 old scores with c=0.1
+        for _ in range(5):
+            store.add_score("s1", ScoreSnapshot(c=0.1, i=0.5, kappa=0.8, s=0.5, regime="rigid"))
+        # Add 3 new scores with c=0.9
+        for _ in range(3):
+            store.add_score("s1", ScoreSnapshot(c=0.9, i=0.5, kappa=0.8, s=1.3, regime="creative-grounded"))
+        result = store.rolling_window_stats("s1", window=3)
+        assert result["stats"]["c"]["mean"] == pytest.approx(0.9, abs=1e-4)

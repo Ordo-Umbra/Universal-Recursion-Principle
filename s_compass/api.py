@@ -3,13 +3,15 @@ api.py
 
 REST API for S Compass (Design-doc §8).
 
-Implements the five endpoints specified in the system design:
+Implements the five original endpoints plus two new ones:
 
-* ``POST /v1/session/start``   — start a traced session (§8.1)
-* ``POST /v1/step``            — submit + score an inference step (§8.2)
-* ``GET  /v1/session/<id>``    — session summary (§8.3)
-* ``GET  /v1/trace/<id>/graph``— coherence graph for a trace (§8.4)
-* ``POST /v1/policy/evaluate`` — standalone policy evaluation (§8.5)
+* ``POST /v1/session/start``       — start a traced session (§8.1)
+* ``POST /v1/step``                — submit + score an inference step (§8.2)
+* ``GET  /v1/session/<id>``        — session summary (§8.3)
+* ``GET  /v1/trace/<id>/graph``    — coherence graph for a trace (§8.4)
+* ``POST /v1/policy/evaluate``     — standalone policy evaluation (§8.5)
+* ``GET  /v1/sessions``            — list all active session IDs (new)
+* ``GET  /v1/session/<id>/window`` — rolling-window score statistics (new)
 
 The module exposes :func:`create_app` which returns a Flask application
 wired to a shared :class:`SCompassGateway`.
@@ -134,6 +136,29 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
             return jsonify({"ok": False, "error": "session not found"}), 404
         summary["ok"] = True
         return jsonify(summary), 200
+
+    # -----------------------------------------------------------------
+    # NEW  GET /v1/sessions  — list all session IDs
+    # -----------------------------------------------------------------
+    @app.route("/v1/sessions", methods=["GET"])
+    def list_sessions() -> tuple:
+        session_ids = gw.store.list_sessions()
+        return jsonify({"ok": True, "sessions": session_ids}), 200
+
+    # -----------------------------------------------------------------
+    # NEW  GET /v1/session/<session_id>/window  — rolling window stats
+    # -----------------------------------------------------------------
+    @app.route("/v1/session/<session_id>/window", methods=["GET"])
+    def session_window(session_id: str) -> tuple:
+        try:
+            window = int(request.args.get("window", 10))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "window must be an integer"}), 400
+        result = gw.store.rolling_window_stats(session_id, window=window)
+        if result is None:
+            return jsonify({"ok": False, "error": "session not found"}), 404
+        result["ok"] = True
+        return jsonify(result), 200
 
     # -----------------------------------------------------------------
     # §8.4  GET /v1/trace/<trace_id>/graph
