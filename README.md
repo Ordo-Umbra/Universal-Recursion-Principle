@@ -34,6 +34,7 @@ Taken together, the docs in this repo are not just isolated papers. They are bra
 
 * `/Docs/` - Core papers and notes, including the main end-to-end URP framework, the manifesto, and focused extensions on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics.
 * `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, multi-agent dynamics, transformer behavior, and S-landscape intuition.
+* `/s_compass/` - The S Compass Python package — a runtime observability and control layer for LLMs, RAG pipelines, and agent systems, implementing the S-functional as a live diagnostic.
 * `/visuals/` - Visual assets and placeholders for the future diagrammatic presentation of the framework.
 
 ## Start Here
@@ -107,6 +108,47 @@ Just run `pip install -r requirements.txt` once, then:
 | **S-Landscape Explorer** | `Sims/s_landscape_explorer.py` | Interactive intuition pump for gradient ascent on an S-shaped landscape | `python Sims/s_landscape_explorer.py` |
 
 Every sim saves its plot automatically and prints a clear summary. Clone, run, reproduce — no setup headaches.
+
+## 🧭 S Compass
+
+The `s_compass/` package is a Python implementation of the S Compass system described in [Docs/S-Compass-System-Design.md](Docs/S-Compass-System-Design.md). It turns the URP S-functional (**S = C + κI**) into a runtime observability and control layer for LLMs, RAG pipelines, and agent systems.
+
+### Architecture
+
+| Module | Role | Design-doc section |
+|--------|------|--------------------|
+| `s_compass/schemas.py` | Canonical event envelopes, claims, evidence, scores, policy actions | §9, §10 |
+| `s_compass/telemetry.py` | Telemetry normaliser — converts heterogeneous payloads into canonical events | §4.2 |
+| `s_compass/estimators.py` | C, I, κ estimators with `normalize` and `capacity_field` helpers | §4.3–4.5, §11, §19 |
+| `s_compass/scoring.py` | S scoring engine and regime classifier (rigid / creative-grounded / hallucination-risk / collapse) | §4.6, §12 |
+| `s_compass/policy.py` | Policy engine — turns scores into actionable recommendations | §4.7 |
+| `s_compass/store.py` | In-memory evaluation store for sessions, steps, scores, and interventions | §4.8 |
+| `s_compass/gateway.py` | Main entry point tying telemetry → scoring → policy → store | §4.1, §5 |
+
+### Quick Start
+
+```python
+from s_compass import SCompassGateway, StepInput
+
+gw = SCompassGateway()
+gw.start_session("sess_001")
+
+result = gw.submit_step(StepInput(
+    session_id="sess_001",
+    prompt="Explain the S Compass architecture.",
+    output_text="S Compass is a telemetry and policy layer ...",
+))
+
+print(result["scores"])   # {'c': ..., 'i': ..., 'kappa': ..., 's': ...}
+print(result["regime"])   # e.g. 'creative-grounded'
+print(result["policy"])   # {'action': 'none', 'reason': '...'}
+```
+
+### Running Tests
+
+```bash
+python -m pytest tests/test_s_compass.py -v
+```
 
 ## Supporting Files
 
