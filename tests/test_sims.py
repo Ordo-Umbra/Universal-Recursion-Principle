@@ -11,6 +11,12 @@ from Sims.beta_g_emergence import urp_evolve
 from Sims.qcd_attractor_emergence import urp_step
 from Sims.multi_agent_cooperation import graph_s_metrics
 from Sims.s_landscape_explorer import s_potential, gradient_ascent_step
+from Sims.biology_urp import (
+    simulate_cell_demon,
+    simulate_enzyme_demon,
+    sagawa_ito_check,
+)
+from Sims.layerwise_transformer import compute_layer_metrics, simulate_layerwise
 
 Z_EFF_REF = 2.0  # Effective nuclear charge near helium optimum
 BETA_DEFAULT = 0.09  # URP nonlinear sharpening parameter used in the paper
@@ -92,3 +98,126 @@ def test_gradient_ascent_small_step_near_flat_region():
     next_pos = gradient_ascent_step(near_flat, lr=0.005)
     next_value = s_potential(*next_pos)
     assert next_value >= start_value - 1e-8  # should not overshoot or diverge
+
+
+# ===========================================================================
+# Biology URP simulation
+# ===========================================================================
+
+def test_cell_demon_returns_correct_shapes():
+    n = 30
+    dC, dI, kap, S = simulate_cell_demon(n_steps=n, rng_seed=1)
+    for arr in (dC, dI, kap, S):
+        assert arr.shape == (n,)
+
+
+def test_cell_demon_s_values_non_negative():
+    dC, dI, kap, S = simulate_cell_demon(n_steps=40, rng_seed=2)
+    assert np.all(S >= 0)
+
+
+def test_cell_demon_kappa_in_valid_range():
+    _, _, kap, _ = simulate_cell_demon(n_steps=40, rng_seed=3)
+    assert np.all(kap > 0)
+    assert np.all(kap <= 1.0)
+
+
+def test_cell_demon_custom_kappa_schedule():
+    schedule = [0.9, 0.8, 0.7]
+    dC, dI, kap, S = simulate_cell_demon(n_steps=5, kappa_schedule=schedule, rng_seed=4)
+    assert kap[0] == pytest.approx(0.9)
+    assert kap[1] == pytest.approx(0.8)
+    assert kap[2] == pytest.approx(0.7)
+    # Last value repeated for remaining steps
+    assert kap[3] == pytest.approx(0.7)
+    assert kap[4] == pytest.approx(0.7)
+
+
+def test_enzyme_demon_returns_correct_shapes():
+    n = 50
+    C, I, kap, S, dev = simulate_enzyme_demon(n_steps=n, rng_seed=5)
+    for arr in (C, I, kap, S, dev):
+        assert arr.shape == (n,)
+
+
+def test_enzyme_demon_deviation_non_negative():
+    _, _, _, _, dev = simulate_enzyme_demon(n_steps=40, rng_seed=6)
+    assert np.all(dev >= 0)
+
+
+def test_enzyme_demon_s_formula():
+    """S = C + kappa * I at every step."""
+    C, I, kap, S, _ = simulate_enzyme_demon(n_steps=20, rng_seed=7)
+    expected_S = C + kap * I
+    assert np.allclose(S, expected_S)
+
+
+def test_sagawa_ito_check_no_violations():
+    """Well-behaved cell demon should satisfy the budget bound."""
+    dC, dI, kap, _ = simulate_cell_demon(n_steps=60, rng_seed=8)
+    violations, ok = sagawa_ito_check(dC, dI, kap)
+    assert ok is True
+
+
+def test_sagawa_ito_check_detects_violations():
+    """Manually constructed violation should be caught."""
+    dC = np.array([0.1, 0.1, 0.1])
+    dI = np.array([0.5, 0.5, 0.5])  # dI > kap * dC → violation
+    kap = np.array([1.0, 1.0, 1.0])
+    violations, ok = sagawa_ito_check(dC, dI, kap)
+    assert ok is False
+    assert violations.any()
+
+
+# ===========================================================================
+# Layerwise transformer simulation
+# ===========================================================================
+
+def test_layerwise_returns_correct_shapes():
+    n = 6
+    C, I, kap, S, dS = simulate_layerwise(n_layers=n, seq_len=8, vocab_size=32, rng_seed=0)
+    for arr in (C, I, kap, S, dS):
+        assert arr.shape == (n,)
+
+
+def test_layerwise_delta_s_starts_at_zero():
+    _, _, _, _, dS = simulate_layerwise(n_layers=4, rng_seed=1)
+    assert dS[0] == pytest.approx(0.0)
+
+
+def test_layerwise_delta_s_matches_diff():
+    _, _, _, S, dS = simulate_layerwise(n_layers=6, rng_seed=2)
+    for l in range(1, len(S)):
+        assert dS[l] == pytest.approx(S[l] - S[l - 1])
+
+
+def test_layerwise_s_mostly_increases():
+    """At least half of layer transitions should show S increasing (§6 hypothesis)."""
+    _, _, _, S, dS = simulate_layerwise(n_layers=8, seq_len=16, vocab_size=64, rng_seed=0)
+    n_nondecreasing = int((dS[1:] >= 0).sum())
+    # The hypothesis is probabilistic; require at least half
+    assert n_nondecreasing >= len(S) // 2
+
+
+def test_layerwise_final_layer_c_drops():
+    """Output collapse at the final layer should drive C below the early-layer peak."""
+    C, _, _, _, _ = simulate_layerwise(n_layers=8, seq_len=16, vocab_size=64, rng_seed=0)
+    peak_C = C[:-1].max()
+    assert C[-1] < peak_C
+
+
+def test_compute_layer_metrics_known_values():
+    """Uniform distributions should give maximum entropy C and zero I."""
+    n_tokens = 4
+    vocab_size = 8
+    # Uniform predictive → max entropy
+    uniform_preds = np.full((n_tokens, vocab_size), 1.0 / vocab_size)
+    # Uniform attention → zero integration
+    uniform_attn = np.full((n_tokens, n_tokens), 1.0 / n_tokens)
+    C, I, kappa, S = compute_layer_metrics(uniform_preds, uniform_attn, beta=1.0)
+    expected_C = np.log(vocab_size)
+    expected_I = 0.0
+    assert C == pytest.approx(expected_C, rel=1e-4)
+    assert I == pytest.approx(expected_I, abs=1e-6)
+    assert kappa > 0
+    assert S == pytest.approx(C + kappa * I, rel=1e-6)

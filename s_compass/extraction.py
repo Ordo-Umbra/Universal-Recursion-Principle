@@ -1,11 +1,13 @@
 """
 extraction.py
 
-Claim extraction and evidence linking for S Compass (Design-doc §4.4, §16 v1).
+Claim extraction, evidence linking, and contradiction detection for S Compass
+(Design-doc §4.4, §16 v1).
 
-Extracts claims from model output text and builds evidence links against
-retrieved context, producing the claim/evidence graph that feeds into the
-I estimator and the coherence graph (§4.4 internal modules 1–2).
+Extracts claims from model output text, builds evidence links against
+retrieved context, and detects contradictions between claims, producing the
+claim/evidence graph that feeds into the I estimator and the coherence graph
+(§4.4 internal modules 1–3).
 """
 
 from __future__ import annotations
@@ -160,18 +162,103 @@ def link_evidence(
 
 
 # ---------------------------------------------------------------------------
+# Contradiction detector (Design-doc §4.4, module 3 / §11 contradiction_penalty)
+# ---------------------------------------------------------------------------
+
+_NEGATION_TOKENS = frozenset(
+    {
+        "not", "no", "never", "neither", "nor", "cannot", "cant", "wont",
+        "dont", "doesnt", "didnt", "isnt", "arent", "wasnt", "werent",
+        "hasnt", "havent", "hadnt", "shouldnt", "wouldnt", "couldnt",
+        "without", "false", "incorrect", "wrong", "impossible",
+    }
+)
+
+
+def _has_negation(text: str) -> bool:
+    """Return True if *text* contains a negation token."""
+    tokens = set(re.sub(r"[^\w\s]", "", text.lower()).split())
+    return bool(tokens & _NEGATION_TOKENS)
+
+
+def detect_contradictions(
+    claims: List[Claim],
+    *,
+    overlap_threshold: float = 0.3,
+) -> List[GraphEdge]:
+    """Detect pairs of claims that likely contradict each other.
+
+    Two claims are flagged as contradictory when they share significant topic
+    overlap (measured by :func:`_token_overlap`) yet differ in polarity: one
+    contains negation words and the other does not.  A ``contradicts``
+    :class:`GraphEdge` is emitted for each such pair (both directions, so the
+    graph is symmetric).
+
+    This implements module 3 of the I Estimator pipeline (Design-doc §4.4
+    §11 contradiction_penalty).
+
+    Parameters
+    ----------
+    claims:
+        Previously extracted claims.
+    overlap_threshold:
+        Minimum token-overlap score to consider two claims as discussing the
+        same topic.
+
+    Returns
+    -------
+    List[GraphEdge]
+        Contradiction edges between conflicting claims.
+    """
+    edges: List[GraphEdge] = []
+    for idx_a in range(len(claims)):
+        for idx_b in range(idx_a + 1, len(claims)):
+            claim_a = claims[idx_a]
+            claim_b = claims[idx_b]
+            overlap = _token_overlap(claim_a.text, claim_b.text)
+            if overlap < overlap_threshold:
+                continue
+            neg_a = _has_negation(claim_a.text)
+            neg_b = _has_negation(claim_b.text)
+            if neg_a == neg_b:
+                # Both affirm or both negate — no contradiction signal
+                continue
+            # One negates, one affirms the same topic → contradiction
+            edges.append(
+                GraphEdge(
+                    source_id=claim_a.claim_id,
+                    target_id=claim_b.claim_id,
+                    edge_type="contradicts",
+                    weight=round(overlap, 4),
+                )
+            )
+            edges.append(
+                GraphEdge(
+                    source_id=claim_b.claim_id,
+                    target_id=claim_a.claim_id,
+                    edge_type="contradicts",
+                    weight=round(overlap, 4),
+                )
+            )
+    return edges
+
+
+# ---------------------------------------------------------------------------
 # Convenience: extract + link in one call
 # ---------------------------------------------------------------------------
 
 def extract_and_link(step: StepInput) -> Tuple[List[Claim], List[Evidence], List[GraphEdge]]:
-    """Extract claims from a step and link them to retrieved evidence.
+    """Extract claims from a step, link evidence, and detect contradictions.
 
-    Combines :func:`extract_claims` and :func:`link_evidence` into a single
-    pipeline call suitable for gateway integration.
+    Combines :func:`extract_claims`, :func:`link_evidence`, and
+    :func:`detect_contradictions` into a single pipeline call suitable for
+    gateway integration.  The returned edges include both ``supported_by``
+    links from retrieved context and ``contradicts`` links between claims.
     """
     claims = extract_claims(
         step.output_text,
         trace_id=step.trace_id,
     )
-    evidences, edges = link_evidence(claims, step.retrieved_context)
-    return claims, evidences, edges
+    evidences, support_edges = link_evidence(claims, step.retrieved_context)
+    contradiction_edges = detect_contradictions(claims)
+    return claims, evidences, support_edges + contradiction_edges

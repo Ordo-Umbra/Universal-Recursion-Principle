@@ -293,3 +293,89 @@ class TestPolicyEvaluate:
         data = resp.get_json()
         assert data["regime"] == "rigid"
         assert data["policy"]["action"] == "increase_temperature"
+
+
+# ===========================================================================
+# GET /v1/sessions  — list all sessions
+# ===========================================================================
+
+class TestListSessions:
+    def test_empty_store(self, client):
+        resp = client.get("/v1/sessions")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert data["sessions"] == []
+
+    def test_lists_created_sessions(self, client):
+        for sid in ("alpha", "beta", "gamma"):
+            client.post(
+                "/v1/session/start",
+                data=json.dumps({"session_id": sid}),
+                content_type="application/json",
+            )
+        resp = client.get("/v1/sessions")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert set(data["sessions"]) == {"alpha", "beta", "gamma"}
+
+    def test_does_not_include_unlisted_ids(self, client):
+        client.post(
+            "/v1/session/start",
+            data=json.dumps({"session_id": "only_one"}),
+            content_type="application/json",
+        )
+        resp = client.get("/v1/sessions")
+        data = resp.get_json()
+        assert "only_one" in data["sessions"]
+        assert len(data["sessions"]) == 1
+
+
+# ===========================================================================
+# GET /v1/session/<id>/window  — rolling window statistics
+# ===========================================================================
+
+class TestSessionWindow:
+    def test_window_not_found(self, client):
+        resp = client.get("/v1/session/nonexistent/window")
+        assert resp.status_code == 404
+        data = resp.get_json()
+        assert data["ok"] is False
+
+    def test_window_empty_session(self, client):
+        client.post(
+            "/v1/session/start",
+            data=json.dumps({"session_id": "empty_sess"}),
+            content_type="application/json",
+        )
+        resp = client.get("/v1/session/empty_sess/window")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert data["count"] == 0
+        assert data["stats"] == {}
+
+    def test_window_after_step(self, seeded_client):
+        resp = seeded_client.get("/v1/session/s1/window?window=5")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert data["count"] >= 1
+        assert "stats" in data
+        for field in ("c", "i", "kappa", "s"):
+            assert field in data["stats"]
+            stat = data["stats"][field]
+            assert "mean" in stat
+            assert "std" in stat
+            assert "min" in stat
+            assert "max" in stat
+
+    def test_window_default_size(self, seeded_client):
+        resp = seeded_client.get("/v1/session/s1/window")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["window"] == 10
+
+    def test_window_invalid_param(self, seeded_client):
+        resp = seeded_client.get("/v1/session/s1/window?window=abc")
+        assert resp.status_code == 400

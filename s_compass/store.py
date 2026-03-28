@@ -12,8 +12,9 @@ a graph database; the in-memory implementation is the MVP default.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .schemas import Event, PolicyAction, ScoreSnapshot
 
@@ -80,7 +81,68 @@ class EvaluationStore:
             rec = self.start_session(session_id)
         rec.policies.append(action)
 
-    # -- aggregation --------------------------------------------------------
+    # -- rolling window statistics ------------------------------------------
+
+    def rolling_window_stats(
+        self,
+        session_id: str,
+        window: int = 10,
+    ) -> Dict[str, Any]:
+        """Return rolling-window statistics over the last *window* score snapshots.
+
+        Computes mean, standard deviation, minimum, and maximum for each of the
+        four score fields (``c``, ``i``, ``kappa``, ``s``) across the most
+        recent *window* snapshots.  If fewer than *window* snapshots are
+        available all available snapshots are used.
+
+        Parameters
+        ----------
+        session_id:
+            The session to inspect.
+        window:
+            Number of most-recent snapshots to include.
+
+        Returns
+        -------
+        dict
+            ``{"session_id", "window", "count", "stats": {"c": {...}, ...}}``
+            where each field dict has keys ``mean``, ``std``, ``min``, ``max``.
+            Returns ``None`` if the session does not exist.
+        """
+        rec = self._sessions.get(session_id)
+        if rec is None:
+            return None
+        snaps = rec.scores[-window:] if window > 0 else []
+        n = len(snaps)
+        if n == 0:
+            return {
+                "session_id": session_id,
+                "window": window,
+                "count": 0,
+                "stats": {},
+            }
+
+        def _field_stats(vals: List[float]) -> Dict[str, float]:
+            mean = sum(vals) / len(vals)
+            variance = sum((v - mean) ** 2 for v in vals) / len(vals)
+            return {
+                "mean": round(mean, 4),
+                "std": round(math.sqrt(variance), 4),
+                "min": round(min(vals), 4),
+                "max": round(max(vals), 4),
+            }
+
+        return {
+            "session_id": session_id,
+            "window": window,
+            "count": n,
+            "stats": {
+                "c": _field_stats([s.c for s in snaps]),
+                "i": _field_stats([s.i for s in snaps]),
+                "kappa": _field_stats([s.kappa for s in snaps]),
+                "s": _field_stats([s.s for s in snaps]),
+            },
+        }
 
     def session_summary(self, session_id: str) -> Optional[Dict[str, object]]:
         """Return an aggregate summary for a session (Design-doc §8.3)."""
