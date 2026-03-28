@@ -630,7 +630,7 @@ That way the system can evolve without making historical metrics uninterpretable
 
 ## 16. Suggested MVP Sequence
 
-### V1
+### v1
 
 - gateway
 - canonical event schema
@@ -640,20 +640,20 @@ That way the system can evolve without making historical metrics uninterpretable
 - basic coherence graph
 - dashboard with session timeline
 
-### V2
+### v2
 
 - policy engine
 - grounded regeneration recommendations
 - intervention tracking
 - richer contradiction analysis
 
-### V3
+### v3
 
 - white-box model adapters
 - layerwise S estimation
 - training and evaluation integrations
 
-#### V3 white-box outline
+#### v3 white-box outline
 
 - **Adapters**: capture token-level log_probs, attention maps, KV norms, gradient or Fisher diagonals (when safe), and internal activations/embeddings. Preserve per-layer metadata (layer idx, head idx, position).
 - **Layerwise C/I/κ**:
@@ -744,14 +744,14 @@ def compute_step_score(telemetry):
         contradiction_penalty(telemetry.claims)
     ])
 
-    kappa = capacity_field(
+    kappa_value = capacity_field(
         context_load=telemetry.context_tokens_used / telemetry.context_window,
         latency_std=telemetry.latency.std_ms,
         tool_failure_rate=telemetry.tools.failure_rate
     )
 
-    s = c + kappa * i  # mirrors URP definition S = C + κI
-    return { "c": c, "i": i, "kappa": kappa, "s": s }
+    s = c + kappa_value * i  # mirrors URP definition S = C + κI
+    return { "c": c, "i": i, "kappa": kappa_value, "s": s }
 ```
 
 Normalization and weights should be data-driven; start with z-scores against recent session windows and clip to [0,1] for UI.
