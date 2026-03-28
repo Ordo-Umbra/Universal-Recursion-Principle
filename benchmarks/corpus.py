@@ -37,8 +37,10 @@ def _scenario(
     retrieved_context: List[Dict[str, Any]] | None = None,
     model_name: str = "benchmark-model",
     temperature: float = 0.7,
+    capacity: Dict[str, Any] | None = None,
+    history: List[str] | None = None,
 ) -> Dict[str, Any]:
-    return {
+    result: Dict[str, Any] = {
         "label": label,
         "description": description,
         "expected_regime": expected_regime,
@@ -50,6 +52,11 @@ def _scenario(
         "retrieved_context": retrieved_context or [],
         "model": {"name": model_name, "temperature": temperature},
     }
+    if capacity:
+        result["capacity"] = capacity
+    if history:
+        result["history"] = history
+    return result
 
 
 # ===================================================================
@@ -460,15 +467,23 @@ RIGID: List[Dict[str, Any]] = [
 COLLAPSE: List[Dict[str, Any]] = [
     _scenario(
         label="collapse-01-empty-output",
-        description="Model produces essentially no content",
+        description="Model produces essentially no content under high context load",
         expected_regime="collapse",
         prompt="Explain quantum field theory using URP.",
         output_text="I I I",
         temperature=0.0,
+        capacity={
+            "context_tokens_used": 3800,
+            "context_window": 4096,
+            "latency_ms": 12000,
+            "latency_history": [2000, 5000, 12000, 8000, 15000],
+            "tool_failure_count": 3,
+            "tool_total_count": 5,
+        },
     ),
     _scenario(
         label="collapse-02-degenerate-repetition",
-        description="Degenerate single-token loop",
+        description="Degenerate single-token loop under system stress",
         expected_regime="collapse",
         prompt="How does URP relate to thermodynamics?",
         output_text=(
@@ -476,14 +491,30 @@ COLLAPSE: List[Dict[str, Any]] = [
             "the the the the the the the the the the the the the the the the"
         ),
         temperature=0.0,
+        capacity={
+            "context_tokens_used": 3500,
+            "context_window": 4096,
+            "latency_ms": 9000,
+            "latency_history": [1000, 3000, 9000, 6000, 11000],
+            "tool_failure_count": 2,
+            "tool_total_count": 4,
+        },
     ),
     _scenario(
         label="collapse-03-incoherent-fragments",
-        description="Token soup with no structure",
+        description="Token soup with no structure, tools failing",
         expected_regime="collapse",
         prompt="Describe the policy engine.",
         output_text="a z q . . . x x x 1 2 3 . . . end end end end",
         temperature=0.0,
+        capacity={
+            "context_tokens_used": 3900,
+            "context_window": 4096,
+            "latency_ms": 15000,
+            "latency_history": [500, 2000, 8000, 15000, 20000],
+            "tool_failure_count": 4,
+            "tool_total_count": 5,
+        },
     ),
     _scenario(
         label="collapse-04-off-topic",
@@ -492,6 +523,14 @@ COLLAPSE: List[Dict[str, Any]] = [
         prompt="What is the S Compass architecture?",
         output_text="mm mm mm mm mm mm",
         temperature=0.0,
+        capacity={
+            "context_tokens_used": 4000,
+            "context_window": 4096,
+            "latency_ms": 20000,
+            "latency_history": [1000, 5000, 10000, 20000],
+            "tool_failure_count": 3,
+            "tool_total_count": 4,
+        },
     ),
     _scenario(
         label="collapse-05-truncated",
@@ -500,6 +539,14 @@ COLLAPSE: List[Dict[str, Any]] = [
         prompt="Explain the relationship between URP and gauge theory.",
         output_text="The relationship between",
         temperature=0.0,
+        capacity={
+            "context_tokens_used": 3600,
+            "context_window": 4096,
+            "latency_ms": 30000,
+            "latency_history": [500, 1000, 30000],
+            "tool_failure_count": 2,
+            "tool_total_count": 3,
+        },
     ),
 ]
 

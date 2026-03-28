@@ -107,6 +107,9 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
         # Model metadata
         model_info = body.get("model", {})
 
+        # Capacity / telemetry signals
+        capacity = body.get("capacity", {})
+
         step = StepInput(
             session_id=session_id,
             prompt=prompt,
@@ -116,6 +119,13 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
             citations=citations,
             model_name=model_info.get("name"),
             temperature=model_info.get("temperature"),
+            context_tokens_used=capacity.get("context_tokens_used", 0),
+            context_window=capacity.get("context_window", 4096),
+            latency_ms=capacity.get("latency_ms", 0.0),
+            latency_history=capacity.get("latency_history", []),
+            tool_failure_count=capacity.get("tool_failure_count", 0),
+            tool_total_count=capacity.get("tool_total_count", 0),
+            history=body.get("history", []),
         )
 
         if body.get("step_id"):

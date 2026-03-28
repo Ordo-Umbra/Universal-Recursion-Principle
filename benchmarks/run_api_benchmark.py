@@ -109,6 +109,10 @@ def run_benchmark() -> Dict[str, Any]:
                     "retrieved_context": scenario.get("retrieved_context", []),
                     "model": scenario.get("model", {}),
                 }
+                if "capacity" in scenario:
+                    step_body["capacity"] = scenario["capacity"]
+                if "history" in scenario:
+                    step_body["history"] = scenario["history"]
 
                 step_resp = _post_json(client, "/v1/step", step_body)
                 assert step_resp["status"] == 200, (
