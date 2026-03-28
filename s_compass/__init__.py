@@ -40,6 +40,15 @@ from .estimators import (
 from .scoring import classify_regime, score_step, score_step_dict
 from .policy import evaluate as evaluate_policy
 from .store import EvaluationStore
+from .extraction import extract_claims, link_evidence, extract_and_link
+from .graph import (
+    analyse_coherence,
+    build_coherence_graph,
+    claim_grounding_ratio,
+    graph_density,
+    graph_to_dict,
+)
+from .api import create_app
 
 __all__ = [
     # Gateway
@@ -68,4 +77,16 @@ __all__ = [
     "evaluate_policy",
     # Store
     "EvaluationStore",
+    # Extraction
+    "extract_claims",
+    "link_evidence",
+    "extract_and_link",
+    # Graph
+    "analyse_coherence",
+    "build_coherence_graph",
+    "claim_grounding_ratio",
+    "graph_density",
+    "graph_to_dict",
+    # API
+    "create_app",
 ]

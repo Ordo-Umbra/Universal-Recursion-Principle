@@ -3,20 +3,22 @@ gateway.py
 
 S Compass Gateway — the main entry point (Design-doc §4.1, §5).
 
-Ties together telemetry normalisation, scoring, policy evaluation, and
-the evaluation store into a single high-level API that application code
-can call per inference step.
+Ties together telemetry normalisation, claim extraction, coherence graph
+building, scoring, policy evaluation, and the evaluation store into a
+single high-level API that application code can call per inference step.
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .schemas import Event, PolicyAction, ScoreSnapshot, StepInput
 from .scoring import score_step
 from .policy import evaluate as evaluate_policy
 from .store import EvaluationStore
 from .telemetry import normalize_event
+from .extraction import extract_and_link
+from .graph import analyse_coherence
 
 
 class SCompassGateway:
@@ -32,6 +34,8 @@ class SCompassGateway:
 
     def __init__(self, store: Optional[EvaluationStore] = None) -> None:
         self.store = store or EvaluationStore()
+        # trace_id → coherence analysis dict (Design-doc §8.4)
+        self._trace_graphs: Dict[str, Dict[str, Any]] = {}
 
     # -- session management -------------------------------------------------
 
@@ -60,10 +64,12 @@ class SCompassGateway:
         API §8.2).  It:
 
         1. Records telemetry events.
-        2. Computes C, I, κ, and S.
-        3. Classifies the behavioural regime.
-        4. Evaluates policy.
-        5. Persists everything in the store.
+        2. Extracts claims and links evidence (§4.4).
+        3. Builds the coherence graph (§4.4, §8.4).
+        4. Computes C, I, κ, and S.
+        5. Classifies the behavioural regime.
+        6. Evaluates policy.
+        7. Persists everything in the store.
 
         Returns a dict matching the API §8.2 response schema.
         """
@@ -87,11 +93,29 @@ class SCompassGateway:
         self.store.add_event(session_id, prompt_evt)
         self.store.add_event(session_id, model_evt)
 
-        # 2-3. Score
+        # 2. Extract claims and link evidence
+        claims, evidences, edges = extract_and_link(step)
+
+        # Emit claim.extracted events
+        for claim in claims:
+            claim_evt = normalize_event(
+                "claim.extracted",
+                session_id=session_id,
+                trace_id=step.trace_id,
+                payload={"claim_id": claim.claim_id, "text": claim.text},
+                step_id=step.step_id,
+            )
+            self.store.add_event(session_id, claim_evt)
+
+        # 3. Coherence graph
+        coherence = analyse_coherence(claims, evidences, edges)
+        self._trace_graphs[step.trace_id] = coherence
+
+        # 4-5. Score
         snapshot: ScoreSnapshot = score_step(step)
         self.store.add_score(session_id, snapshot)
 
-        # 4. Policy
+        # 6. Policy
         policy: PolicyAction = evaluate_policy(snapshot)
         self.store.add_policy(session_id, policy)
 
@@ -109,7 +133,7 @@ class SCompassGateway:
             )
             self.store.add_event(session_id, pol_evt)
 
-        # 5. Return
+        # 7. Return
         return {
             "ok": True,
             "scores": {
@@ -131,3 +155,7 @@ class SCompassGateway:
     def get_session_scores(self, session_id: str) -> List[ScoreSnapshot]:
         """Return the full score timeline for a session."""
         return self.store.get_scores(session_id)
+
+    def get_trace_graph(self, trace_id: str) -> Optional[Dict[str, Any]]:
+        """Return the coherence graph analysis for a trace (Design-doc §8.4)."""
+        return self._trace_graphs.get(trace_id)
