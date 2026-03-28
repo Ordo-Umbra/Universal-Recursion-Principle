@@ -677,3 +677,76 @@ Then:
 ## 18. Summary
 
 S Compass is a model-agnostic observability and control layer that estimates novelty, coherence, and usable capacity in AI systems, combines them into an S score, and uses that score to explain and steer behavior.
+
+---
+
+## 19. Practical Estimation Blueprint
+
+This section grounds the C / I / κ estimators in concrete, implementable signals drawn from the rest of the URP docs (e.g., **Transformer-Dynamics.md**, **Universal-Recursion-Principle.md**, **The Question Behind Maxwell.txt**).
+
+### 19.1 Telemetry Contract (minimum viable fields)
+
+- `prompt`, `output.text`, `citations`, `retrieval.results[]`
+- `logprobs` or token-level entropy when available
+- `attention` or attribution weights when available (see Transformer-Dynamics)
+- `tool_calls[]` and outcomes
+- `latency_ms`, `retries`, `context_tokens_used`, `context_window`
+- `claim_graph` (extracted claims + evidence links), when enabled
+
+### 19.2 Estimator features
+
+**C (distinction / novelty)**
+- Output entropy (token or sequence-level)
+- Embedding distance from prompt and retrieved context
+- Claim novelty: proportion of claims not directly supported by citations
+- Branch/beam diversity and tool-path diversity
+
+**I (integration / coherence)**
+- Citation coverage ratio and entailment/contradiction checks
+- Support graph density and algebraic connectivity (see Universal-Recursion-Principle graph section)
+- Cross-turn consistency score (e.g., cosine between current and prior answers on shared claims)
+- Factuality/contradiction flags from claim-level evaluation
+
+**κ (usable capacity)**
+- Context pressure: `context_tokens_used / context_window`
+- Latency dispersion and retry volatility
+- Tool failure rate and incomplete tool responses
+- Retrieval overload: breadth vs. hit rate
+
+### 19.3 Scoring sketch (per step)
+
+```python
+def score_step(telemetry):
+    c = normalize([
+        entropy(telemetry.output),
+        embedding_novelty(telemetry.output, telemetry.retrieval),
+        claim_novelty(telemetry.claims, telemetry.citations),
+        path_diversity(telemetry.branches)
+    ])
+
+    i = normalize([
+        citation_coverage(telemetry.claims, telemetry.citations),
+        support_graph_connectivity(telemetry.claim_graph),
+        cross_turn_consistency(telemetry.history),
+        contradiction_penalty(telemetry.claims)
+    ])
+
+    kappa = capacity_field(
+        context_load=telemetry.context_tokens_used / telemetry.context_window,
+        latency_std=telemetry.latency.std_ms,
+        tool_failure_rate=telemetry.tools.failure_rate
+    )
+
+    s = c + kappa * i
+    return { "c": c, "i": i, "kappa": kappa, "s": s }
+```
+
+Normalization and weights should be data-driven; start with z-scores against recent session windows and clip to [0,1] for UI.
+
+### 19.4 Build order (MVP to v2)
+
+1. **MVP scoring**: entropy-based C, citation coverage-based I, simple κ from context pressure + latency.
+2. **Claim graph**: add claim extraction and support graph density; surface explanations.
+3. **Policy loop**: wire policy actions (temperature, retrieval breadth, grounded regeneration).
+4. **Attention/white-box**: plug in attention variance as κ signal when available (Transformer-Dynamics).
+5. **Evaluation harness**: benchmark regimes (rigid / creative-grounded / hallucination-risk / collapse) on canned traces; export session summaries to the evaluation store.
