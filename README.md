@@ -35,6 +35,7 @@ Taken together, the docs in this repo are not just isolated papers. They are bra
 * `/Docs/` - Core papers and notes, including the main end-to-end URP framework, the manifesto, and focused extensions on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics.
 * `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, multi-agent dynamics, transformer behavior, S-landscape intuition, biological Maxwell's demons, and layerwise transformer S-functional evolution.
 * `/s_compass/` - The S Compass Python package — a runtime observability and control layer for LLMs, RAG pipelines, and agent systems, implementing the S-functional as a live diagnostic.
+* `/benchmarks/` - Benchmark corpus and runner for testing S Compass against human-labelled scenarios across all four behavioural regimes, with structured Markdown reports.
 * `/visuals/` - Visual assets and placeholders for the future diagrammatic presentation of the framework.
 
 ## Start Here
@@ -153,6 +154,35 @@ print(result["policy"])   # {'action': 'none', 'reason': '...'}
 
 ```bash
 python -m pytest tests/test_s_compass.py tests/test_extraction.py tests/test_graph.py tests/test_api.py -v
+```
+
+## 📊 API Benchmark
+
+The `benchmarks/` directory contains a curated corpus of 25 scenarios spanning all four behavioural regimes, plus a runner that exercises every REST API endpoint and produces a structured Markdown report.
+
+### Running the Benchmark
+
+```bash
+python -m benchmarks.run_api_benchmark                # report to stdout
+python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
+```
+
+### What the Benchmark Tests
+
+* **25 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes
+* **All 7 REST API endpoints**: session start, step submission, session summary, session list, rolling-window stats, trace graph, and policy evaluation
+* **Per-regime precision, recall, and F1** with a confusion matrix
+* **Score distribution analysis** (C, I, κ, S averages by expected regime)
+* **Capacity signal validation** (κ varies with context load, latency, tool failures)
+
+### Current Results
+
+See [benchmarks/REPORT.md](benchmarks/REPORT.md) for the full report, including per-scenario scores, a confusion matrix, and identified estimator gaps.
+
+### Running Benchmark Tests
+
+```bash
+python -m pytest tests/test_benchmark.py -v
 ```
 
 ## Supporting Files

@@ -107,6 +107,11 @@ class SCompassGateway:
             )
             self.store.add_event(session_id, claim_evt)
 
+        # 2b. Feed extracted claims back into the step so the I estimator
+        #     can use them for citation-coverage and support-graph metrics.
+        if claims and not step.claims:
+            step.claims = list(claims)
+
         # 3. Coherence graph
         coherence = analyse_coherence(claims, evidences, edges)
         self._trace_graphs[step.trace_id] = coherence
