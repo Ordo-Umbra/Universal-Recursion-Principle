@@ -258,16 +258,6 @@ def generate_report(results: Dict[str, Any], out: TextIO = sys.stdout) -> None:
 
     # -- Detailed scenario results ------------------------------------------
     w("## Scenario Details\n\n")
-    for session_id, group_name, _ in SESSION_GROUPS:
-        group_scenarios = [s for s in scenarios
-                          if s["label"].startswith(session_id.replace("bench_", ""))]
-        # Fallback: match by expected regime group
-        if not group_scenarios:
-            group_scenarios = [s for s in scenarios
-                               if s["label"].startswith(group_name.lower().split("-")[0])
-                               or s["label"].startswith(group_name.lower().replace("-", "_"))]
-        # More robust: match from SESSION_GROUPS corpus
-        pass  # we'll just iterate all scenarios by group
 
     # Group by label prefix
     current_group = ""
