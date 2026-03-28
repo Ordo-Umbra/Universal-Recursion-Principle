@@ -653,7 +653,7 @@ That way the system can evolve without making historical metrics uninterpretable
 - layerwise S estimation
 - training and evaluation integrations
 
-#### v3 white-box outline
+#### V3 white-box outline
 
 - **Adapters**: capture token-level log_probs, attention maps, KV norms, gradient or Fisher diagonals (when safe), and internal activations/embeddings. Preserve per-layer metadata (layer idx, head idx, position).
 - **Layerwise C/I/κ**:
@@ -730,7 +730,6 @@ This section grounds the C/I/κ estimators in concrete, implementable signals dr
 
 ```python
 def compute_step_score(telemetry):
-    # normalize(): z-score metrics vs. rolling mean/std, optional weighted average, then clip to [0,1]
     c = normalize([
         entropy(telemetry.output),
         embedding_novelty(telemetry.output, telemetry.retrieval),
@@ -745,7 +744,6 @@ def compute_step_score(telemetry):
         contradiction_penalty(telemetry.claims)
     ])
 
-    # capacity_field(): normalized load inputs -> weighted_sum = w1*context_load + w2*latency_std + w3*tool_failure_rate; return sigmoid(weighted_sum)
     kappa = capacity_field(
         context_load=telemetry.context_tokens_used / telemetry.context_window,
         latency_std=telemetry.latency.std_ms,
