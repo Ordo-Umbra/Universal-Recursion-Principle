@@ -717,7 +717,7 @@ This section grounds the C/I/κ estimators in concrete, implementable signals dr
 
 ```python
 def compute_step_score(telemetry):
-    # normalize(): z-score each metric against rolling mean/std, average (optionally with preset weights), then min-max clip to [0,1]
+    # normalize(): z-score each metric individually vs. rolling mean/std, take (optionally weighted) average of those scores, then min-max clip the result to [0,1]
     c = normalize([
         entropy(telemetry.output),
         embedding_novelty(telemetry.output, telemetry.retrieval),
@@ -732,7 +732,7 @@ def compute_step_score(telemetry):
         contradiction_penalty(telemetry.claims)
     ])
 
-    # capacity_field(): weighted_sum = w1*context_load + w2*normalize(latency_std) + w3*tool_failure_rate; return sigmoid(weighted_sum) (normalization happens inside)
+    # capacity_field(): normalize each load input (context_load is already a ratio; latency/tool rates are z-scored) -> weighted_sum = w1*context_load + w2*latency_std + w3*tool_failure_rate; return sigmoid(weighted_sum)
     kappa = capacity_field(
         context_load=telemetry.context_tokens_used / telemetry.context_window,
         latency_std=telemetry.latency.std_ms,
