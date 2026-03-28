@@ -1,7 +1,7 @@
 """
 telemetry.py
 
-Telemetry normaliser for S Compass (Design-doc §4.2).
+Telemetry normalizer for S Compass (Design-doc §4.2).
 
 Converts heterogeneous application payloads into a sequence of canonical
 Event objects so the rest of the pipeline stays vendor- and model-agnostic.

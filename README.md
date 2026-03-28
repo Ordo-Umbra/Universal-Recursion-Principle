@@ -118,7 +118,7 @@ The `s_compass/` package is a Python implementation of the S Compass system desc
 | Module | Role | Design-doc section |
 |--------|------|--------------------|
 | `s_compass/schemas.py` | Canonical event envelopes, claims, evidence, scores, policy actions | §9, §10 |
-| `s_compass/telemetry.py` | Telemetry normaliser — converts heterogeneous payloads into canonical events | §4.2 |
+| `s_compass/telemetry.py` | Telemetry normalizer — converts heterogeneous payloads into canonical events | §4.2 |
 | `s_compass/estimators.py` | C, I, κ estimators with `normalize` and `capacity_field` helpers | §4.3–4.5, §11, §19 |
 | `s_compass/scoring.py` | S scoring engine and regime classifier (rigid / creative-grounded / hallucination-risk / collapse) | §4.6, §12 |
 | `s_compass/policy.py` | Policy engine — turns scores into actionable recommendations | §4.7 |

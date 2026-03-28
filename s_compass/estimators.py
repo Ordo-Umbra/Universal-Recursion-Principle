@@ -11,7 +11,7 @@ changing the scoring signature.
 from __future__ import annotations
 
 import math
-from typing import List, Sequence
+from typing import Dict, List, Sequence
 
 import numpy as np
 
@@ -32,7 +32,7 @@ def _token_entropy(text: str) -> float:
     tokens = text.split()
     if not tokens:
         return 0.0
-    counts: dict[str, int] = {}
+    counts: Dict[str, int] = {}
     for t in tokens:
         counts[t] = counts.get(t, 0) + 1
     n = len(tokens)
