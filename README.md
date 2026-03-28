@@ -33,7 +33,7 @@ Taken together, the docs in this repo are not just isolated papers. They are bra
 ## Repository Structure
 
 * `/Docs/` - Core papers and notes, including the main end-to-end URP framework, the manifesto, and focused extensions on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics.
-* `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, multi-agent dynamics, transformer behavior, and S-landscape intuition.
+* `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, multi-agent dynamics, transformer behavior, S-landscape intuition, biological Maxwell's demons, and layerwise transformer S-functional evolution.
 * `/s_compass/` - The S Compass Python package — a runtime observability and control layer for LLMs, RAG pipelines, and agent systems, implementing the S-functional as a live diagnostic.
 * `/visuals/` - Visual assets and placeholders for the future diagrammatic presentation of the framework.
 
@@ -106,6 +106,8 @@ Just run `pip install -r requirements.txt` once, then:
 | **Multi-Agent Cooperation** | `Sims/multi_agent_cooperation.py` | Graph-based S metrics show how cooperation and shared structure can emerge in networks | `python Sims/multi_agent_cooperation.py` |
 | **Transformer S-Functional** | `Sims/transformer_s_functional.py` | Minimal phase-space demo for rigid, creative, hallucination, and collapse regimes | `python Sims/transformer_s_functional.py` |
 | **S-Landscape Explorer** | `Sims/s_landscape_explorer.py` | Interactive intuition pump for gradient ascent on an S-shaped landscape | `python Sims/s_landscape_explorer.py` |
+| **Biology URP Demon** | `Sims/biology_urp.py` | Minimal-genome cell and enzyme Maxwell's demons maximizing S; validates the Sagawa–Ito information bound ΔI ≤ κ·ΔC | `python Sims/biology_urp.py` |
+| **Layerwise Transformer S** | `Sims/layerwise_transformer.py` | Tracks C, I, κ, and S layer-by-layer through a transformer, validating the S^(l+1) ≥ S^(l) hypothesis from Transformer-Dynamics.md §6 | `python Sims/layerwise_transformer.py` |
 
 Every sim saves its plot automatically and prints a clear summary. Clone, run, reproduce — no setup headaches.
 
