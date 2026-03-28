@@ -716,7 +716,8 @@ This section grounds the C/I/κ estimators in concrete, implementable signals dr
 ### 19.3 Scoring sketch (per step)
 
 ```python
-def score_step(telemetry):
+def compute_step_score(telemetry):
+    # normalize(): aggregate (e.g., weighted mean) after z-scoring against recent sessions, clipped to [0,1]
     c = normalize([
         entropy(telemetry.output),
         embedding_novelty(telemetry.output, telemetry.retrieval),
@@ -731,13 +732,14 @@ def score_step(telemetry):
         contradiction_penalty(telemetry.claims)
     ])
 
+    # capacity_field(): combine load signals (context, latency volatility, tool health) into κ via weighted sum -> sigmoid
     kappa = capacity_field(
         context_load=telemetry.context_tokens_used / telemetry.context_window,
         latency_std=telemetry.latency.std_ms,
         tool_failure_rate=telemetry.tools.failure_rate
     )
 
-    s = c + kappa * i
+    s = c + kappa * i  # mirrors URP definition S = C + κI
     return { "c": c, "i": i, "kappa": kappa, "s": s }
 ```
 
