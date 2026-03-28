@@ -630,7 +630,7 @@ That way the system can evolve without making historical metrics uninterpretable
 
 ## 16. Suggested MVP Sequence
 
-### v1
+### V1
 
 - gateway
 - canonical event schema
@@ -640,14 +640,14 @@ That way the system can evolve without making historical metrics uninterpretable
 - basic coherence graph
 - dashboard with session timeline
 
-### v2
+### V2
 
 - policy engine
 - grounded regeneration recommendations
 - intervention tracking
 - richer contradiction analysis
 
-### v3
+### V3
 
 - white-box model adapters
 - layerwise S estimation
@@ -655,7 +655,7 @@ That way the system can evolve without making historical metrics uninterpretable
 
 #### v3 white-box outline
 
-- **Adapters**: capture token-level logprobs, attention maps, KV norms, gradient or Fisher diagonals (when safe), and internal activations/embeddings. Preserve per-layer metadata (layer idx, head idx, position).
+- **Adapters**: capture token-level log_probs, attention maps, KV norms, gradient or Fisher diagonals (when safe), and internal activations/embeddings. Preserve per-layer metadata (layer idx, head idx, position).
 - **Layerwise C/I/κ**:
   - C: per-layer predictive entropy, branch diversity across heads, activation sparsity metrics.
   - I: attention concentration/entropy, head connectivity structure, residual stream coherence vs. retrieved/support signals.
@@ -730,7 +730,7 @@ This section grounds the C/I/κ estimators in concrete, implementable signals dr
 
 ```python
 def compute_step_score(telemetry):
-    # normalize(): z-score each metric individually vs. rolling mean/std, take (optionally weighted) average of those scores, then min-max clip the result to [0,1]
+    # normalize(): z-score metrics vs. rolling mean/std, optional weighted average, then clip to [0,1]
     c = normalize([
         entropy(telemetry.output),
         embedding_novelty(telemetry.output, telemetry.retrieval),
@@ -745,7 +745,7 @@ def compute_step_score(telemetry):
         contradiction_penalty(telemetry.claims)
     ])
 
-    # capacity_field(): normalize each load input (context_load is already a ratio; latency/tool rates are z-scored) -> weighted_sum = w1*context_load + w2*latency_std + w3*tool_failure_rate; return sigmoid(weighted_sum)
+    # capacity_field(): normalized load inputs -> weighted_sum = w1*context_load + w2*latency_std + w3*tool_failure_rate; return sigmoid(weighted_sum)
     kappa = capacity_field(
         context_load=telemetry.context_tokens_used / telemetry.context_window,
         latency_std=telemetry.latency.std_ms,
@@ -759,6 +759,8 @@ def compute_step_score(telemetry):
 Normalization and weights should be data-driven; start with z-scores against recent session windows and clip to [0,1] for UI.
 
 The additive form mirrors the core URP definition `S = C + κI`: novelty contributes directly, while integration is scaled by usable capacity to avoid over-crediting coherence when the system is saturated.
+
+Reference implementations should surface small helpers (e.g., `normalize`, `capacity_field`) with docstrings describing the z-score → weighted-average → clipping and weighted-sum → sigmoid steps so that pipelines can swap estimators without changing the scoring signature.
 
 ### 19.4 Build order (MVP to v2)
 
