@@ -653,6 +653,19 @@ That way the system can evolve without making historical metrics uninterpretable
 - layerwise S estimation
 - training and evaluation integrations
 
+#### v3 white-box outline
+
+- **Adapters**: capture token-level log_probs, attention maps, KV norms, gradient or Fisher diagonals (when safe), and internal activations/embeddings. Preserve per-layer metadata (layer idx, head idx, position).
+- **Layerwise C/I/κ**:
+  - C: per-layer predictive entropy, branch diversity across heads, activation sparsity metrics.
+  - I: attention concentration/entropy, head connectivity structure, residual stream coherence vs. retrieved/support signals.
+  - κ: attention variance and saturation, context pressure by layer, instability markers (e.g., exploding norms, retry/backoff signals during decoding).
+- **Scoring pipeline**: compute per-layer S, roll up to token, step, and session; track deltas across layers to locate collapse or divergence early.
+- **Calibration**: align internal metrics to black-box outputs via held-out traces; store normalization stats per model/version; expose confidence on layerwise S.
+- **Policy hooks**: allow interventions that target layers/heads (e.g., head dropout, temperature/rep-pen adjustments, routing to safer variants) when S drops below thresholds.
+- **Evaluation**: maintain regression suite with white-box traces (teacher-forcing and free-running) to benchmark S against QA/factuality and hallucination labels; include drift monitors for attention patterns.
+- **Privacy/safety**: gate capture of gradients/activations behind feature flags; strip PII; enforce retention windows; avoid storing raw inputs when not required for metrics.
+
 ---
 
 ## 17. Example Runtime Scenario
@@ -677,3 +690,80 @@ Then:
 ## 18. Summary
 
 S Compass is a model-agnostic observability and control layer that estimates novelty, coherence, and usable capacity in AI systems, combines them into an S score, and uses that score to explain and steer behavior.
+
+---
+
+## 19. Practical Estimation Blueprint
+
+This section grounds the C/I/κ estimators in concrete, implementable signals drawn from the rest of the URP docs (e.g., **Transformer-Dynamics.md**, **Universal-Recursion-Principle.md**, **The Question Behind Maxwell.txt**).
+
+### 19.1 Telemetry Contract (minimum viable fields)
+
+- `prompt`, `output.text`, `citations`, `retrieval.results[]`
+- `logprobs` or token-level entropy when available
+- `attention` or attribution weights when available (see Transformer-Dynamics)
+- `tool_calls[]` and outcomes
+- `latency_ms`, `retries`, `context_tokens_used`, `context_window`
+- `claim_graph` (extracted claims + evidence links), when enabled
+
+### 19.2 Estimator features
+
+**C (distinction / novelty)**
+- Output entropy (token or sequence-level)
+- Embedding distance from prompt and retrieved context
+- Claim novelty: proportion of claims not directly supported by citations
+- Branch/beam diversity and tool-path diversity
+
+**I (integration / coherence)**
+- Citation coverage ratio and entailment/contradiction checks
+- Support graph density and algebraic connectivity (see Universal-Recursion-Principle graph section)
+- Cross-turn consistency score (e.g., cosine between current and prior answers on shared claims)
+- Factuality/contradiction flags from claim-level evaluation
+
+**κ (usable capacity)**
+- Context pressure: `context_tokens_used / context_window`
+- Latency dispersion and retry volatility
+- Tool failure rate and incomplete tool responses
+- Retrieval overload: breadth vs. hit rate
+
+### 19.3 Scoring sketch (per step)
+
+```python
+def compute_step_score(telemetry):
+    c = normalize([
+        entropy(telemetry.output),
+        embedding_novelty(telemetry.output, telemetry.retrieval),
+        claim_novelty(telemetry.claims, telemetry.citations),
+        path_diversity(telemetry.branches)
+    ])
+
+    i = normalize([
+        citation_coverage(telemetry.claims, telemetry.citations),
+        support_graph_connectivity(telemetry.claim_graph),
+        cross_turn_consistency(telemetry.history),
+        contradiction_penalty(telemetry.claims)
+    ])
+
+    kappa_value = capacity_field(
+        context_load=telemetry.context_tokens_used / telemetry.context_window,
+        latency_std=telemetry.latency.std_ms,
+        tool_failure_rate=telemetry.tools.failure_rate
+    )
+
+    s = c + kappa_value * i  # mirrors URP definition S = C + κI
+    return { "c": c, "i": i, "kappa": kappa_value, "s": s }
+```
+
+Normalization and weights should be data-driven; start with z-scores against recent session windows and clip to [0,1] for UI.
+
+The additive form mirrors the core URP definition `S = C + κI`: novelty contributes directly, while integration is scaled by usable capacity to avoid over-crediting coherence when the system is saturated.
+
+Reference implementations should surface small helpers (e.g., `normalize`, `capacity_field`) with docstrings describing the z-score → weighted-average → clipping and weighted-sum → sigmoid steps so that pipelines can swap estimators without changing the scoring signature.
+
+### 19.4 Build order (MVP to v2)
+
+1. **MVP scoring**: entropy-based C, citation coverage-based I, simple κ from context pressure + latency.
+2. **Claim graph**: add claim extraction and support graph density; surface explanations.
+3. **Policy loop**: wire policy actions (temperature, retrieval breadth, grounded regeneration).
+4. **Attention/white-box**: plug in attention variance as κ signal when available (Transformer-Dynamics).
+5. **Evaluation harness**: benchmark regimes (rigid / creative-grounded / hallucination-risk / collapse) on canned traces; export session summaries to the evaluation store.
