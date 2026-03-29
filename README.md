@@ -249,26 +249,26 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 
 ### Current Results
 
-**Overall accuracy: 92.0% (23/25 correct regime classifications)**
+**Overall accuracy: 88.0% (22/25 correct regime classifications)**
 
 | Regime | Precision | Recall | F1 |
 |--------|-----------|--------|-----|
-| Creative-grounded | 0.89 | 0.89 | 0.89 |
+| Creative-grounded | 0.80 | 0.89 | 0.84 |
 | Hallucination-risk | 0.83 | 1.00 | 0.91 |
-| Rigid | 1.00 | 0.83 | 0.91 |
+| Rigid | 1.00 | 0.67 | 0.80 |
 | Collapse | 1.00 | 1.00 | 1.00 |
 
 **Interpreting the results:**
 
 - **Collapse detection is perfect** (F1=1.00). The κ estimator reliably captures context pressure, latency spikes, and tool failures, and degenerate outputs produce low C and I. This is the clearest regime signal.
 - **Hallucination-risk recall is perfect** (1.00). Every hallucination scenario is caught. The one false positive (an edge case where creative output lacks any retrieval context) represents a reasonable design choice: flagging ungrounded novelty.
-- **Rigid detection works well** for clear cases (echo-retrieval, list-only restating) but one false negative (`rigid-02-template-response`) has lexically diverse vocabulary despite structural repetition, yielding C=0.86 — above the rigid threshold. This highlights a known estimator gap: the current C proxy measures token diversity, not structural diversity.
-- **Gray-box mode** consistently produces higher confidence (0.85 vs 0.65) and enables more decisive policy interventions. The dynamic confidence mechanism correctly reflects signal availability.
+- **Rigid detection works well** for clear cases (echo-retrieval, list-only restating) but two false negatives exist: `rigid-02-template-response` has lexically diverse vocabulary despite structural repetition (C=0.86), and `rigid-03-over-constrained` falls into a borderline zone (C=0.48, I=0.43). This highlights a known estimator gap: the current C proxy measures token diversity, not structural diversity.
+- **Gray-box mode** consistently produces higher confidence (dynamic, typically 0.85–0.95 depending on signal coverage) and enables more decisive policy interventions. The dynamic confidence mechanism correctly reflects signal availability.
 
 **Score separation across regimes** confirms that the metrics capture meaningful distinctions:
-- Creative-grounded: high C (0.84), moderate I (0.60), full κ (1.00), highest S (1.44)
-- Hallucination-risk: high C (0.86), low I (0.33) — the hallmark signature
-- Rigid: lower C (0.61), higher I (0.69) — integration dominates distinction
+- Creative-grounded: high C (0.83), moderate I (0.61), full κ (1.00), highest S (1.44)
+- Hallucination-risk: high C (0.85), low I (0.32) — the hallmark signature
+- Rigid: lower C (0.59), higher I (0.65) — integration dominates distinction
 - Collapse: all scores depressed, especially κ (0.22) — clear capacity failure
 
 See [benchmarks/REPORT.md](benchmarks/REPORT.md) for the full scenario-by-scenario report, including per-scenario mode/confidence, scores, a confusion matrix, and identified estimator gaps.
