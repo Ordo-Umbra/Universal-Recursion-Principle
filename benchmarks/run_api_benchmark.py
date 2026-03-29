@@ -12,13 +12,15 @@ Usage::
 The script:
 
 1. Boots the Flask app via ``create_app()``.
-2. Creates one session per regime group + one for edge cases.
+2. Creates one session per regime group + one each for edge cases and
+   white-box scenarios.
 3. Submits every scenario through ``POST /v1/step``.
 4. Collects scores, regimes, policy actions, and coherence graphs.
 5. Retrieves session summaries and rolling-window stats via the GET endpoints.
 6. Compares computed regimes against human-labelled expected regimes.
 7. Emits a Markdown report with per-scenario detail, confusion matrix,
-   accuracy metrics, aggregate statistics, and gray-box coverage.
+   accuracy metrics, aggregate statistics, gray-box coverage, and
+   white-box coverage.
 """
 
 from __future__ import annotations
