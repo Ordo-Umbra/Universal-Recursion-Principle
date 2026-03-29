@@ -34,8 +34,8 @@ Taken together, the docs in this repo are not just isolated papers. They are bra
 
 * `/Docs/` - Core papers and notes, including the main end-to-end URP framework, the manifesto, and focused extensions on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics.
 * `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, multi-agent dynamics, transformer behavior, S-landscape intuition, biological Maxwell's demons, and layerwise transformer S-functional evolution.
-* `/s_compass/` - The S Compass Python package — a runtime observability and control layer for LLMs, RAG pipelines, and agent systems, implementing the S-functional as a live diagnostic.
-* `/benchmarks/` - Benchmark corpus and runner for testing S Compass against human-labelled scenarios across all four behavioural regimes, with structured Markdown reports.
+* `/s_compass/` - The S Compass Python package — a runtime observability and control layer for LLMs, RAG pipelines, and agent systems, implementing the S-functional as a live diagnostic. Supports black-box and gray-box deployment modes with confidence-aware policy control.
+* `/benchmarks/` - Benchmark corpus (25 human-labelled scenarios including gray-box traces) and runner for testing S Compass against all four behavioural regimes, with structured Markdown reports and per-regime accuracy analysis.
 * `/visuals/` - Visual assets and placeholders for the future diagrammatic presentation of the framework.
 
 ## Start Here
@@ -114,22 +114,65 @@ Every sim saves its plot automatically and prints a clear summary. Clone, run, r
 
 ## 🧭 S Compass
 
-The `s_compass/` package is a Python implementation of the S Compass system described in [Docs/S-Compass-System-Design.md](Docs/S-Compass-System-Design.md). It turns the URP S-functional (**S = C + κI**) into a runtime observability and control layer for LLMs, RAG pipelines, and agent systems.
+The S Compass is a **runtime observability and control layer** for AI systems — LLMs, RAG pipelines, agent workflows, and code assistants. It applies the URP S-functional (**S = C + κI**) as a live diagnostic, measuring whether an AI system is producing genuinely useful output or drifting into failure modes.
+
+### What S Compass measures
+
+| Metric | What it captures | Intuition |
+|--------|------------------|-----------|
+| **C (Distinction)** | Novelty, diversity, and creative differentiation in the output | Is the system generating genuinely new structure, or just echoing its inputs? |
+| **I (Integration)** | Coherence, groundedness, citation coverage, and internal consistency | Is the output well-supported by evidence, or making things up? |
+| **κ (Capacity)** | Usable system capacity under load — context pressure, latency, tool health | Can the system sustain quality under its current operating conditions? |
+| **S = C + κI** | The composite score: novelty + capacity-weighted coherence | The single number summarizing overall system health for this step |
+
+### What S Compass can be used for
+
+- **Hallucination detection**: High C (diverse output) with low I (poor grounding) flags hallucination risk, triggering grounded regeneration policies.
+- **Rigidity detection**: Low C with high I indicates the model is parroting retrieval context without adding value, prompting temperature increases.
+- **Collapse prevention**: When κ drops (context overload, tool failures, latency spikes), S Compass signals capacity stress before output quality degrades.
+- **Quality monitoring**: Track C, I, κ, and S over time across sessions to identify systemic trends, regression, or model degradation.
+- **Automated intervention**: The policy engine converts scores into actionable recommendations — adjusting temperature, retrieval breadth, citation requirements — without human-in-the-loop delay.
+- **Multi-model comparison**: Run different models or configurations through the same benchmark corpus and compare regime distributions and score profiles.
+- **Agent workflow diagnostics**: In multi-step agent systems, S Compass scores each step independently, revealing where in a chain quality breaks down.
+
+### Deployment modes
+
+S Compass operates in three modes, depending on what telemetry the model provider exposes:
+
+| Mode | Available signals | Confidence range | Use case |
+|------|-------------------|------------------|----------|
+| **Black-box** | Prompt, output, citations, retrieval, tool traces | 0.65 (fixed) | Commercial hosted models (OpenAI, Anthropic, etc.) |
+| **Gray-box** | + logprobs, token entropy, relevance scores, tool confidence, decoding instability | 0.65–0.95 (dynamic) | Providers with richer introspection (e.g. logprob access) |
+| **White-box** | + attention maps, hidden states, layerwise metrics | (planned) | Open-weight or locally hosted models |
+
+Gray-box mode dynamically adjusts confidence based on how many signals are available, and the policy engine uses this confidence to tune intervention aggressiveness — more signals mean more decisive responses to detected issues.
+
+### Behavioural regimes
+
+Every scored step is classified into one of four regimes:
+
+| Regime | C | I | κ | Interpretation | Policy response |
+|--------|---|---|---|----------------|-----------------|
+| **Creative-grounded** | High | Moderate–High | Moderate–High | Healthy: novel and well-supported | No intervention |
+| **Hallucination-risk** | High | Low | Any | Diverse but ungrounded output | Require grounded regeneration with citations |
+| **Rigid** | Low | High | Moderate–High | Repetitive or retrieval-echoing | Increase temperature to encourage diversity |
+| **Collapse** | Low | Low | Low | Degenerate output under system stress | Reduce load and retry |
 
 ### Architecture
 
 | Module | Role | Design-doc section |
 |--------|------|--------------------|
-| `s_compass/schemas.py` | Canonical event envelopes, claims, evidence, scores, policy actions | §9, §10 |
+| `s_compass/schemas.py` | Canonical event envelopes, claims, evidence, scores, policy actions, gray-box signals | §9, §10, §6.2 |
 | `s_compass/telemetry.py` | Telemetry normalizer — converts heterogeneous payloads into canonical events | §4.2 |
-| `s_compass/estimators.py` | C, I, κ estimators with `normalize` and `capacity_field` helpers | §4.3–4.5, §11, §19 |
-| `s_compass/scoring.py` | S scoring engine and regime classifier (rigid / creative-grounded / hallucination-risk / collapse) | §4.6, §12 |
-| `s_compass/policy.py` | Policy engine — turns scores into actionable recommendations | §4.7 |
+| `s_compass/estimators.py` | Black-box C, I, κ estimators with `normalize` and `capacity_field` helpers | §4.3–4.5, §11, §19 |
+| `s_compass/estimators_graybox.py` | Gray-box C, I, κ estimators with logprob entropy, relevance quality, contradiction penalty, retrieval overload | §4.3–4.5, §6.2, §19 |
+| `s_compass/scoring.py` | S scoring engine and regime classifier — dispatches to gray-box or black-box estimators based on mode | §4.6, §12 |
+| `s_compass/policy.py` | Confidence-aware policy engine — turns scores into actionable recommendations | §4.7 |
 | `s_compass/store.py` | In-memory evaluation store for sessions, steps, scores, and interventions | §4.8 |
-| `s_compass/extraction.py` | Claim extraction and evidence linking from model outputs | §4.4, §16 |
+| `s_compass/extraction.py` | Claim extraction, evidence linking, and contradiction detection from model outputs | §4.4, §16 |
 | `s_compass/graph.py` | Coherence graph builder and structural metrics | §4.4, §8.4 |
-| `s_compass/api.py` | REST API — five endpoints for session, step, graph, and policy access | §8 |
-| `s_compass/gateway.py` | Main entry point tying telemetry → scoring → policy → store | §4.1, §5 |
+| `s_compass/api.py` | REST API — seven endpoints for session, step, graph, window, and policy access | §8 |
+| `s_compass/gateway.py` | Main entry point tying telemetry → extraction → scoring → policy → store, with gray-box auto-detection | §4.1, §5 |
 
 ### Quick Start
 
@@ -139,21 +182,49 @@ from s_compass import SCompassGateway, StepInput
 gw = SCompassGateway()
 gw.start_session("sess_001")
 
+# Black-box mode (default): just prompt + output
 result = gw.submit_step(StepInput(
     session_id="sess_001",
     prompt="Explain the S Compass architecture.",
     output_text="S Compass is a telemetry and policy layer ...",
 ))
 
-print(result["scores"])   # {'c': ..., 'i': ..., 'kappa': ..., 's': ...}
-print(result["regime"])   # e.g. 'creative-grounded'
-print(result["policy"])   # {'action': 'none', 'reason': '...'}
+print(result["scores"])      # {'c': ..., 'i': ..., 'kappa': ..., 's': ...}
+print(result["regime"])      # e.g. 'creative-grounded'
+print(result["policy"])      # {'action': 'none', 'reason': '...'}
+print(result["mode"])        # 'black-box'
+print(result["confidence"])  # 0.65
+```
+
+```python
+# Gray-box mode: supply richer signals for higher-fidelity scoring
+from s_compass.schemas import GrayBoxSignals
+
+result = gw.submit_step(StepInput(
+    session_id="sess_001",
+    prompt="How does URP map onto transformer behaviour?",
+    output_text="In a transformer, the S-functional decomposes per layer ...",
+    gray_box=GrayBoxSignals(
+        logprobs=[-0.5, -1.0, -0.3, -2.0],
+        relevance_scores=[0.91, 0.65, 0.40],
+        tool_confidence={"search": 0.92},
+    ),
+))
+
+print(result["mode"])        # 'gray-box' (auto-detected)
+print(result["confidence"])  # 0.80+ (dynamic, based on signal coverage)
 ```
 
 ### Running Tests
 
 ```bash
+# Full test suite (all 265 tests including gray-box and benchmark tests)
+python -m pytest -v
+
+# Individual test modules
 python -m pytest tests/test_s_compass.py tests/test_extraction.py tests/test_graph.py tests/test_api.py -v
+python -m pytest tests/test_graybox.py -v      # gray-box estimators, scoring dispatch, API parsing
+python -m pytest tests/test_benchmark.py -v     # benchmark corpus through the REST API
 ```
 
 ## 📊 API Benchmark
@@ -170,7 +241,7 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 ### What the Benchmark Tests
 
 * **25 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes
-* **Gray-box benchmark coverage** with explicit mode/confidence reporting for traces that supply logprobs, relevance scores, and tool-confidence signals
+* **5 gray-box benchmark traces** with explicit mode/confidence reporting for traces that supply logprobs, relevance scores, and tool-confidence signals
 * **All 7 REST API endpoints**: session start, step submission, session summary, session list, rolling-window stats, trace graph, and policy evaluation
 * **Per-regime precision, recall, and F1** with a confusion matrix
 * **Score distribution analysis** (C, I, κ, S averages by expected regime)
@@ -178,7 +249,29 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 
 ### Current Results
 
-See [benchmarks/REPORT.md](benchmarks/REPORT.md) for the full report, including per-scenario mode/confidence, scores, a confusion matrix, and identified estimator gaps.
+**Overall accuracy: 92.0% (23/25 correct regime classifications)**
+
+| Regime | Precision | Recall | F1 |
+|--------|-----------|--------|-----|
+| Creative-grounded | 0.89 | 0.89 | 0.89 |
+| Hallucination-risk | 0.83 | 1.00 | 0.91 |
+| Rigid | 1.00 | 0.83 | 0.91 |
+| Collapse | 1.00 | 1.00 | 1.00 |
+
+**Interpreting the results:**
+
+- **Collapse detection is perfect** (F1=1.00). The κ estimator reliably captures context pressure, latency spikes, and tool failures, and degenerate outputs produce low C and I. This is the clearest regime signal.
+- **Hallucination-risk recall is perfect** (1.00). Every hallucination scenario is caught. The one false positive (an edge case where creative output lacks any retrieval context) represents a reasonable design choice: flagging ungrounded novelty.
+- **Rigid detection works well** for clear cases (echo-retrieval, list-only restating) but one false negative (`rigid-02-template-response`) has lexically diverse vocabulary despite structural repetition, yielding C=0.86 — above the rigid threshold. This highlights a known estimator gap: the current C proxy measures token diversity, not structural diversity.
+- **Gray-box mode** consistently produces higher confidence (0.85 vs 0.65) and enables more decisive policy interventions. The dynamic confidence mechanism correctly reflects signal availability.
+
+**Score separation across regimes** confirms that the metrics capture meaningful distinctions:
+- Creative-grounded: high C (0.84), moderate I (0.60), full κ (1.00), highest S (1.44)
+- Hallucination-risk: high C (0.86), low I (0.33) — the hallmark signature
+- Rigid: lower C (0.61), higher I (0.69) — integration dominates distinction
+- Collapse: all scores depressed, especially κ (0.22) — clear capacity failure
+
+See [benchmarks/REPORT.md](benchmarks/REPORT.md) for the full scenario-by-scenario report, including per-scenario mode/confidence, scores, a confusion matrix, and identified estimator gaps.
 
 ### Running Benchmark Tests
 

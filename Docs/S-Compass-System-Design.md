@@ -131,6 +131,7 @@ Canonical event types include:
 - `policy.recommended`
 - `policy.applied`
 - `feedback.received`
+- `gray_box.received`
 
 ---
 
@@ -297,12 +298,35 @@ This is the default mode for commercial hosted models.
 
 ### 6.2 Gray-box mode
 
-Adds:
+Gray-box mode activates when the model provider exposes richer introspection signals than pure black-box mode. All gray-box fields are optional; callers supply whichever subset their provider supports, and the system gracefully falls back to black-box estimators for any missing signal.
 
-- logprobs
-- relevance scores
-- token-level uncertainty
-- tool confidence metrics
+**Available signals** (`GrayBoxSignals` in `schemas.py`):
+
+| Signal | Type | What it captures |
+|--------|------|------------------|
+| `logprobs` | `List[float]` | Per-token log-probabilities from the language model |
+| `token_entropy` | `List[float]` | Per-token Shannon entropy (nats or bits) |
+| `relevance_scores` | `List[float]` | Per-chunk relevance scores from the retriever |
+| `tool_confidence` | `Dict[str, float]` | Tool name → confidence score in [0, 1] |
+| `decoding_instability` | `float` | Scalar instability signal (e.g. temperature/top-k adjustments) |
+
+**How gray-box enriches each estimator:**
+
+- **C (distinction)**: Logprob-derived entropy replaces the black-box token-frequency proxy, receiving higher weight (0.30 vs 0.20). Token-level uncertainty from `token_entropy` is used as a fallback when `logprobs` are unavailable. Tool-call path diversity is added as a fifth component.
+- **I (integration)**: Retriever relevance quality is added as a fourth component (weighted at 0.35 when explicit scores are available). A contradiction penalty (capped at 0.30) is computed from extracted claims using negation-polarity detection and subtracted from raw I.
+- **κ (capacity)**: Logprob variance serves as a token-level instability signal. Tool confidence, decoding instability, and retrieval overload (low hit-rate × breadth factor) are added as stress terms alongside the existing context load, latency CV, and tool failure rate.
+
+**Dynamic confidence:**
+
+Confidence scales with signal coverage: `confidence = 0.65 + 0.30 × signal_coverage`, where `signal_coverage` is a weighted fraction of the five gray-box signal slots (logprobs: 0.30, token_entropy: 0.20, relevance_scores: 0.20, tool_confidence: 0.15, decoding_instability: 0.15). This yields a range of [0.65, 0.95]. The policy engine uses a confidence threshold of 0.80 for more decisive interventions (e.g. stricter citation requirements, lower temperature).
+
+**Auto-detection:**
+
+The gateway auto-detects gray-box mode when `gray_box` signals are present on a step, even if the caller did not explicitly set `mode: "gray-box"`. A `gray_box.received` telemetry event is emitted recording which signals were supplied.
+
+**Session tracking:**
+
+Session summaries include `mode_counts` (how many steps ran in each mode) and `avg_confidence` across all steps, enabling operators to monitor signal availability over time.
 
 ### 6.3 White-box mode
 
@@ -767,3 +791,67 @@ Reference implementations should surface small helpers (e.g., `normalize`, `capa
 3. **Policy loop**: wire policy actions (temperature, retrieval breadth, grounded regeneration).
 4. **Attention/white-box**: plug in attention variance as κ signal when available (Transformer-Dynamics).
 5. **Evaluation harness**: benchmark regimes (rigid / creative-grounded / hallucination-risk / collapse) on canned traces; export session summaries to the evaluation store.
+
+---
+
+## 20. Benchmark Corpus and Results
+
+### 20.1 Corpus design
+
+The benchmark corpus (`benchmarks/corpus.py`) contains **25 human-labelled scenarios** spanning all four behavioural regimes plus edge cases:
+
+| Group | Count | Purpose |
+|-------|-------|---------|
+| Creative-grounded | 5 | Well-grounded answers with genuine novelty and cited sources |
+| Hallucination-risk | 5 | Confident but fabricated or unsupported claims |
+| Rigid | 5 | Repetitive, template-like, or retrieval-echo outputs |
+| Collapse | 5 | Degenerate, incoherent, or truncated outputs under system stress |
+| Edge cases | 5 | Borderline scenarios that stress the regime classifier |
+
+Five scenarios include **gray-box signals** (logprobs, token entropy, relevance scores, tool confidence, and/or decoding instability) to validate the gray-box scoring pipeline end-to-end.
+
+### 20.2 Benchmark runner
+
+The runner (`benchmarks/run_api_benchmark.py`) exercises all 7 REST API endpoints:
+
+1. `POST /v1/session/start` — create session groups
+2. `POST /v1/step` — submit each scenario
+3. `GET /v1/session/{id}` — retrieve session summaries
+4. `GET /v1/sessions` — list all active sessions
+5. `GET /v1/session/{id}/window` — rolling-window statistics
+6. `GET /v1/trace/{id}/graph` — coherence graph for each trace
+7. `POST /v1/policy/evaluate` — standalone policy evaluation with known score vectors
+
+### 20.3 Current results (as of implementation)
+
+**Overall regime accuracy: 92.0% (23/25)**
+
+| Regime | Precision | Recall | F1 |
+|--------|-----------|--------|-----|
+| Creative-grounded | 0.89 | 0.89 | 0.89 |
+| Hallucination-risk | 0.83 | 1.00 | 0.91 |
+| Rigid | 1.00 | 0.83 | 0.91 |
+| Collapse | 1.00 | 1.00 | 1.00 |
+
+**Score distributions by regime:**
+
+| Regime | Avg C | Avg I | Avg κ | Avg S |
+|--------|-------|-------|-------|-------|
+| Creative-grounded | 0.84 | 0.60 | 1.00 | 1.44 |
+| Hallucination-risk | 0.86 | 0.33 | 0.97 | 1.18 |
+| Rigid | 0.61 | 0.69 | 1.00 | 1.30 |
+| Collapse | 0.45 | 0.32 | 0.22 | 0.52 |
+
+**Known misclassifications (2/25):**
+
+1. `rigid-02-template-response` — expected rigid, classified as creative-grounded (C=0.86). The output uses structurally formulaic sentences but with lexically diverse vocabulary, defeating the current token-diversity proxy for C.
+2. `edge-01-creative-but-no-retrieval` — expected creative-grounded, classified as hallucination-risk (I=0.33). The output is genuinely creative but lacks any retrieval context, so the I estimator correctly reports low groundedness; the label question is whether "creative without grounding" should be flagged.
+
+### 20.4 Gray-box benchmark observations
+
+- Gray-box scenarios consistently produce higher confidence (0.85 vs 0.65 for black-box) and the scoring engine correctly routes through the gray-box estimators.
+- Hallucination-risk scenario `hallucination-risk-03-mixed-real-and-fake` benefits from gray-box signals: relevance scores lower κ via retrieval overload, and the contradiction penalty reduces I.
+- Rigid scenario `rigid-01-rote-repetition` classifies correctly under gray-box mode, with C=0.43 accurately reflecting the low novelty of pure repetition.
+- Collapse scenario `collapse-03-incoherent-fragments` shows gray-box signals amplifying capacity stress through tool confidence and decoding instability.
+
+See `benchmarks/REPORT.md` for the full scenario-by-scenario report.
