@@ -43,6 +43,10 @@ def classify_regime(c: float, i: float, kappa: float) -> str:
         return "collapse"
     if c >= _C_HIGH and i < _I_LOW:
         return "hallucination-risk"
+    # Rigid: integration dominates distinction — the output is well-grounded
+    # (high I) but lacks creative transformation (C noticeably lower than I).
+    # The i - c >= 0.10 heuristic captures outputs that echo retrieval
+    # context closely, producing high citation coverage but little novelty.
     if (c < _C_HIGH or i - c >= 0.10) and i >= _I_HIGH and kappa >= _K_LOW:
         return "rigid"
     if c >= _C_HIGH and i >= _I_LOW:

@@ -155,7 +155,7 @@ def _anti_repetition(text: str) -> float:
     Tokens are lowercased and stripped of trailing punctuation so that
     ``"URP."`` and ``"URP"`` count as the same token in bigram pairs.
     """
-    tokens = [re.sub(r'[^\w\s-]', '', t).lower() for t in text.split()]
+    tokens = [re.sub(r"[^\w\s\'-]", '', t).lower() for t in text.split()]
     tokens = [t for t in tokens if t]
     if len(tokens) < 2:
         return 1.0
