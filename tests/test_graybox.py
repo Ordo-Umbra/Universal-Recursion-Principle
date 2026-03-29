@@ -702,7 +702,7 @@ class TestConfidenceAwarePolicy:
     def test_high_confidence_hallucination_uses_stricter_params(self):
         from s_compass.policy import evaluate
         snap = ScoreSnapshot(c=0.7, i=0.2, kappa=0.3, s=0.76, regime="hallucination-risk",
-                             confidence=0.90)
+                             confidence=0.90, mode="gray-box")
         action = evaluate(snap)
         assert action.action == "require_grounded_regeneration"
         assert action.parameters["temperature"] == 0.15
@@ -711,7 +711,7 @@ class TestConfidenceAwarePolicy:
     def test_low_confidence_hallucination_uses_softer_params(self):
         from s_compass.policy import evaluate
         snap = ScoreSnapshot(c=0.7, i=0.2, kappa=0.3, s=0.76, regime="hallucination-risk",
-                             confidence=0.65)
+                             confidence=0.65, mode="black-box")
         action = evaluate(snap)
         assert action.action == "require_grounded_regeneration"
         assert action.parameters["temperature"] == 0.3
@@ -720,14 +720,14 @@ class TestConfidenceAwarePolicy:
     def test_high_confidence_rigid_uses_higher_temp(self):
         from s_compass.policy import evaluate
         snap = ScoreSnapshot(c=0.3, i=0.7, kappa=0.8, s=0.86, regime="rigid",
-                             confidence=0.90)
+                             confidence=0.90, mode="gray-box")
         action = evaluate(snap)
         assert action.parameters["temperature"] == 0.8
 
     def test_low_confidence_rigid_uses_moderate_temp(self):
         from s_compass.policy import evaluate
         snap = ScoreSnapshot(c=0.3, i=0.7, kappa=0.8, s=0.86, regime="rigid",
-                             confidence=0.65)
+                             confidence=0.65, mode="black-box")
         action = evaluate(snap)
         assert action.parameters["temperature"] == 0.7
 

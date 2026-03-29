@@ -124,20 +124,14 @@ class SCompassGateway:
         # Emit gray_box.received telemetry event when signals are present.
         if step.gray_box is not None:
             gb = step.gray_box
-            signal_summary = {
-                k: k != "decoding_instability"
-                and getattr(gb, k) is not None
-                and bool(getattr(gb, k))
-                or k == "decoding_instability"
-                and getattr(gb, k) is not None
-                for k in (
-                    "logprobs",
-                    "token_entropy",
-                    "relevance_scores",
-                    "tool_confidence",
-                    "decoding_instability",
-                )
-            }
+            signal_summary = {}
+            for k in ("logprobs", "token_entropy", "relevance_scores",
+                       "tool_confidence", "decoding_instability"):
+                val = getattr(gb, k)
+                if k == "decoding_instability":
+                    signal_summary[k] = val is not None
+                else:
+                    signal_summary[k] = val is not None and bool(val)
             gb_evt = normalize_event(
                 "gray_box.received",
                 session_id=session_id,
