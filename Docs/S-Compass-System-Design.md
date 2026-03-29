@@ -822,7 +822,7 @@ The runner (`benchmarks/run_api_benchmark.py`) exercises all 7 REST API endpoint
 6. `GET /v1/trace/{id}/graph` — coherence graph for each trace
 7. `POST /v1/policy/evaluate` — standalone policy evaluation with known score vectors
 
-### 20.3 Current results (as of implementation)
+### 20.3 Current results (2026-03-29)
 
 **Overall regime accuracy: 88.0% (22/25)**
 
