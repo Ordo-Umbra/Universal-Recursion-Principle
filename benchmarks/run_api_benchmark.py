@@ -41,6 +41,7 @@ from .corpus import (
     EDGE_CASES,
     HALLUCINATION_RISK,
     RIGID,
+    WHITE_BOX,
 )
 
 
@@ -56,6 +57,7 @@ SESSION_GROUPS: List[Tuple[str, str, List[Dict[str, Any]]]] = [
     ("bench_rigid", "Rigid", RIGID),
     ("bench_collapse", "Collapse", COLLAPSE),
     ("bench_edge", "Edge Cases", EDGE_CASES),
+    ("bench_whitebox", "White-Box", WHITE_BOX),
 ]
 
 
@@ -115,6 +117,8 @@ def run_benchmark() -> Dict[str, Any]:
                     step_body["history"] = scenario["history"]
                 if "gray_box_signals" in scenario:
                     step_body["gray_box_signals"] = scenario["gray_box_signals"]
+                if "white_box_signals" in scenario:
+                    step_body["white_box_signals"] = scenario["white_box_signals"]
                 if "mode" in scenario:
                     step_body["mode"] = scenario["mode"]
 

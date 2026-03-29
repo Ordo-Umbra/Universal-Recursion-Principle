@@ -28,6 +28,7 @@ from benchmarks.corpus import (
     EDGE_CASES,
     HALLUCINATION_RISK,
     RIGID,
+    WHITE_BOX,
 )
 from benchmarks.run_api_benchmark import run_benchmark
 
@@ -35,7 +36,13 @@ from benchmarks.run_api_benchmark import run_benchmark
 GRAY_BOX_LABELS = {
     scenario["label"]
     for scenario in ALL_SCENARIOS
-    if scenario.get("gray_box_signals")
+    if scenario.get("gray_box_signals") and not scenario.get("white_box_signals")
+}
+
+WHITE_BOX_LABELS = {
+    scenario["label"]
+    for scenario in ALL_SCENARIOS
+    if scenario.get("white_box_signals")
 }
 
 
@@ -69,13 +76,14 @@ class TestBenchmarkExecution:
         assert len(benchmark_results["scenarios"]) == len(ALL_SCENARIOS)
 
     def test_all_sessions_created(self, benchmark_results):
-        """Five session groups were created and listed."""
+        """Six session groups were created and listed."""
         assert set(benchmark_results["all_sessions"]) == {
             "bench_creative",
             "bench_hallucination",
             "bench_rigid",
             "bench_collapse",
             "bench_edge",
+            "bench_whitebox",
         }
 
     def test_gray_box_scenarios_are_present(self):
@@ -91,6 +99,15 @@ class TestBenchmarkExecution:
             "collapse-03-incoherent-fragments",
             "collapse-11-gray-box-extreme-instability",
             "edge-18-gray-box-partial-signals",
+        }
+
+    def test_white_box_scenarios_are_present(self):
+        """The corpus includes white-box benchmark traces."""
+        assert WHITE_BOX_LABELS == {
+            "creative-grounded-16-white-box-full",
+            "hallucination-risk-16-white-box-divergent",
+            "rigid-16-white-box-saturated",
+            "collapse-16-white-box-breakdown",
         }
 
     def test_session_summaries_present(self, benchmark_results):
@@ -178,6 +195,10 @@ class TestGrayBoxBenchmarking:
                 # Dynamic confidence: 0.65 base + up to 0.30 from signal coverage
                 assert s["confidence"] > 0.65
                 assert s["confidence"] <= 0.95
+            elif s["label"] in WHITE_BOX_LABELS:
+                # White-box confidence: [0.85, 0.99]
+                assert s["confidence"] >= 0.85
+                assert s["confidence"] <= 0.99
             else:
                 assert s["confidence"] == pytest.approx(0.65)
 
@@ -194,6 +215,20 @@ class TestGrayBoxBenchmarking:
                 f"{label}: expected {by_label[label]['expected_regime']}, "
                 f"got {by_label[label]['computed_regime']}"
             )
+
+
+class TestWhiteBoxBenchmarking:
+    def test_white_box_scenarios_run_in_white_box_mode(self, benchmark_results):
+        """Configured white-box scenarios should execute in white-box mode."""
+        by_label = {s["label"]: s for s in benchmark_results["scenarios"]}
+        assert {label for label, s in by_label.items() if s["mode"] == "white-box"} == WHITE_BOX_LABELS
+
+    def test_white_box_scenarios_have_high_confidence(self, benchmark_results):
+        """White-box benchmark traces should surface highest confidence."""
+        for s in benchmark_results["scenarios"]:
+            if s["label"] in WHITE_BOX_LABELS:
+                assert s["confidence"] >= 0.85
+                assert s["confidence"] <= 0.99
 
 
 # ---------------------------------------------------------------------------

@@ -121,6 +121,10 @@ class SCompassGateway:
         if step.gray_box is not None and step.mode == "black-box":
             step.mode = "gray-box"
 
+        # Auto-detect white-box mode when signals are present.
+        if step.white_box is not None and step.mode in ("black-box", "gray-box"):
+            step.mode = "white-box"
+
         # Emit gray_box.received telemetry event when signals are present.
         if step.gray_box is not None:
             gb = step.gray_box
@@ -140,6 +144,27 @@ class SCompassGateway:
                 step_id=step.step_id,
             )
             self.store.add_event(session_id, gb_evt)
+
+        # Emit white_box.received telemetry event when signals are present.
+        if step.white_box is not None:
+            wb = step.white_box
+            wb_signal_summary = {}
+            for k in ("attention_entropy", "attention_variance",
+                       "head_confidence", "kv_norm", "activation_sparsity",
+                       "gradient_norm", "residual_coherence"):
+                val = getattr(wb, k)
+                if k == "residual_coherence":
+                    wb_signal_summary[k] = val is not None
+                else:
+                    wb_signal_summary[k] = val is not None and bool(val)
+            wb_evt = normalize_event(
+                "white_box.received",
+                session_id=session_id,
+                trace_id=step.trace_id,
+                payload={"signals_present": wb_signal_summary, "mode": step.mode},
+                step_id=step.step_id,
+            )
+            self.store.add_event(session_id, wb_evt)
 
         snapshot: ScoreSnapshot = score_step(step)
         self.store.add_score(session_id, snapshot)

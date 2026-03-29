@@ -24,6 +24,12 @@ from .estimators_graybox import (
     estimate_kappa_graybox,
     signal_coverage,
 )
+from .estimators_whitebox import (
+    estimate_c_whitebox,
+    estimate_i_whitebox,
+    estimate_kappa_whitebox,
+    wb_signal_coverage,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -101,13 +107,27 @@ def score_step(step: StepInput) -> ScoreSnapshot:
     Combines the C, I, and κ estimators into the S-functional
     ``S = C + κ I`` and returns a :class:`ScoreSnapshot`.
 
-    When gray-box signals are present the higher-fidelity gray-box
+    When white-box signals are present the highest-fidelity white-box
     estimators are used and ``confidence`` is computed dynamically
-    based on which signals are available.
+    based on combined white-box and gray-box signal coverage.
+
+    When only gray-box signals are present the gray-box estimators are
+    used with gray-box-level confidence.
     """
+    use_white = step.mode == "white-box" and step.white_box is not None
     use_gray = step.mode == "gray-box" and step.gray_box is not None
 
-    if use_gray:
+    if use_white:
+        c = estimate_c_whitebox(step)
+        i = estimate_i_whitebox(step)
+        kappa = estimate_kappa_whitebox(step)
+        # Dynamic confidence: higher floor + weighted coverage of white-box
+        # and gray-box signals.  White-box range: [0.85, 0.99].
+        wb_cov = wb_signal_coverage(step.white_box)
+        gb_cov = signal_coverage(step.gray_box) if step.gray_box else 0.0
+        combined_coverage = 0.70 * wb_cov + 0.30 * gb_cov
+        confidence = 0.85 + 0.14 * combined_coverage  # range [0.85, 0.99]
+    elif use_gray:
         c = estimate_c_graybox(step)
         i = estimate_i_graybox(step)
         kappa = estimate_kappa_graybox(step)

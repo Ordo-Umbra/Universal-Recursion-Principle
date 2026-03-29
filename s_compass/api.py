@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 from flask import Flask, jsonify, request
 
 from .gateway import SCompassGateway
-from .schemas import Claim, GrayBoxSignals, RetrievedChunk, ScoreSnapshot, StepInput
+from .schemas import Claim, GrayBoxSignals, RetrievedChunk, ScoreSnapshot, StepInput, WhiteBoxSignals
 from .policy import evaluate as evaluate_policy
 from .scoring import classify_regime
 
@@ -139,6 +139,21 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
                 decoding_instability=raw_gb.get("decoding_instability"),
             )
             step.mode = body.get("mode", "gray-box")
+
+        # White-box signals (Design-doc §6.3)
+        raw_wb = body.get("white_box_signals")
+        if raw_wb and isinstance(raw_wb, dict):
+            step.white_box = WhiteBoxSignals(
+                attention_entropy=raw_wb.get("attention_entropy"),
+                attention_variance=raw_wb.get("attention_variance"),
+                head_confidence=raw_wb.get("head_confidence"),
+                kv_norm=raw_wb.get("kv_norm"),
+                activation_sparsity=raw_wb.get("activation_sparsity"),
+                gradient_norm=raw_wb.get("gradient_norm"),
+                residual_coherence=raw_wb.get("residual_coherence"),
+                layer_count=raw_wb.get("layer_count"),
+            )
+            step.mode = body.get("mode", "white-box")
 
         if body.get("step_id"):
             step.step_id = body["step_id"]
