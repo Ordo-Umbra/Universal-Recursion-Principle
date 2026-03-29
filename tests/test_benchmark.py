@@ -82,10 +82,15 @@ class TestBenchmarkExecution:
         """The corpus includes gray-box benchmark traces."""
         assert GRAY_BOX_LABELS == {
             "creative-grounded-02-transformer-phases",
+            "creative-grounded-14-gray-box-multi-source",
             "hallucination-risk-03-mixed-real-and-fake",
+            "hallucination-risk-14-gray-box-unstable",
             "rigid-01-rote-repetition",
             "rigid-03-over-constrained",
+            "rigid-11-gray-box-low-entropy",
             "collapse-03-incoherent-fragments",
+            "collapse-11-gray-box-extreme-instability",
+            "edge-18-gray-box-partial-signals",
         }
 
     def test_session_summaries_present(self, benchmark_results):
