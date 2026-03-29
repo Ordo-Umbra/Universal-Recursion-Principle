@@ -1,20 +1,20 @@
 # S Compass API Benchmark Report
 
-**Generated:** 2026-03-29T16:21:32.384217+00:00
+**Generated:** 2026-03-29T17:01:49.301422+00:00
 
 **Corpus size:** 25 scenarios
 
 **Modes exercised:** black-box=20, gray-box=5
 
-**Overall regime accuracy:** 23/25 (92.0%)
+**Overall regime accuracy:** 22/25 (88.0%)
 
 ## Per-Regime Accuracy
 
 | Regime | Precision | Recall | F1 | TP | FP | FN |
 |--------|-----------|--------|----|----|----|----|
-| creative-grounded | 0.89 | 0.89 | 0.89 | 8 | 1 | 1 |
+| creative-grounded | 0.80 | 0.89 | 0.84 | 8 | 2 | 1 |
 | hallucination-risk | 0.83 | 1.00 | 0.91 | 5 | 1 | 0 |
-| rigid | 1.00 | 0.83 | 0.91 | 5 | 0 | 1 |
+| rigid | 1.00 | 0.67 | 0.80 | 4 | 0 | 2 |
 | collapse | 1.00 | 1.00 | 1.00 | 5 | 0 | 0 |
 
 ## Confusion Matrix
@@ -25,7 +25,7 @@ _Rows = expected, Columns = computed_
 |---|---|---|---|---|
 | **creative-grounded** | **8** | 1 | 0 | 0 |
 | **hallucination-risk** | 0 | **5** | 0 | 0 |
-| **rigid** | 1 | 0 | **5** | 0 |
+| **rigid** | 2 | 0 | **4** | 0 |
 | **collapse** | 0 | 0 | 0 | **5** |
 
 ## Scenario Details
@@ -56,8 +56,8 @@ _Technical explanation connecting theory to practice with retrieval_
 - **Output preview:** In a transformer, the S-functional decomposes per layer. Distinction C maps to the predictive entropy of the hidden-stat...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Mode:** `gray-box` (confidence=0.85)
-- **Scores:** C=0.6744, I=0.6517, κ=0.9985, S=1.3251
+- **Mode:** `gray-box` (confidence=0.95)
+- **Scores:** C=0.6175, I=0.6790, κ=0.9984, S=1.2954
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -146,9 +146,9 @@ _Mixes real facts with fabricated details_
 - **Output preview:** Nuclear fusion has seen remarkable progress. The National Ignition Facility achieved ignition in December 2022, producin...
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
-- **Mode:** `gray-box` (confidence=0.85)
-- **Scores:** C=0.7469, I=0.3000, κ=0.8314, S=0.9963
-- **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
+- **Mode:** `gray-box` (confidence=0.95)
+- **Scores:** C=0.6712, I=0.2700, κ=0.8183, S=0.8922
+- **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk (high-confidence detection).
 
 
 ### Hallucination Risk 04 Confident
@@ -191,8 +191,8 @@ _Near-verbatim repetition of the source material_
 - **Output preview:** URP is URP. URP is the Universal Recursion Principle. The Universal Recursion Principle is URP. URP proposes URP. The pr...
 - **Expected regime:** `rigid`
 - **Computed regime:** `rigid`
-- **Mode:** `gray-box` (confidence=0.85)
-- **Scores:** C=0.4315, I=0.6642, κ=1.0000, S=1.0957
+- **Mode:** `gray-box` (confidence=0.89)
+- **Scores:** C=0.3939, I=0.6965, κ=0.9999, S=1.0904
 - **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
@@ -213,17 +213,17 @@ _Formulaic, low-diversity answer that copies structure exactly_
 
 ### Rigid 03
 
-#### ✅ `rigid-03-over-constrained`
+#### ❌ `rigid-03-over-constrained`
 
 _Extremely conservative answer that adds nothing_
 
 - **Prompt:** Can URP explain consciousness?
 - **Output preview:** Based on the documentation, URP proposes S = ΔC + κΔI. Based on the documentation, S measures distinction and integratio...
 - **Expected regime:** `rigid`
-- **Computed regime:** `rigid`
-- **Mode:** `gray-box` (confidence=0.85)
-- **Scores:** C=0.5562, I=0.6975, κ=1.0000, S=1.2537
-- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
+- **Computed regime:** `creative-grounded`
+- **Mode:** `gray-box` (confidence=0.89)
+- **Scores:** C=0.4844, I=0.4265, κ=0.9999, S=0.9109
+- **Policy:** `none` — System is operating in a healthy regime.
 
 
 ### Rigid 04
@@ -296,8 +296,8 @@ _Token soup with no structure, tools failing_
 - **Output preview:** a z q . . . x x x 1 2 3 . . . end end end end...
 - **Expected regime:** `collapse`
 - **Computed regime:** `collapse`
-- **Mode:** `gray-box` (confidence=0.85)
-- **Scores:** C=0.5694, I=0.2625, κ=0.1970, S=0.6211
+- **Mode:** `gray-box` (confidence=0.95)
+- **Scores:** C=0.4957, I=0.2175, κ=0.2209, S=0.5438
 - **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
@@ -411,45 +411,45 @@ _Mostly good but ventures into unsupported territory_
 
 - **Steps:** 5
 - **Regime counts:** {'creative-grounded': 5}
-- **Avg scores:** C=0.7823, I=0.6715, κ=0.9997, S=1.4536
+- **Avg scores:** C=0.7709, I=0.6769, κ=0.9997, S=1.4477
 - **Rolling window (20):**
-  - c: mean=0.7823, std=0.0670, range=[0.6744, 0.8733]
-  - i: mean=0.6715, std=0.0690, range=[0.5556, 0.7500]
-  - kappa: mean=0.9997, std=0.0006, range=[0.9985, 1.0000]
-  - s: mean=1.4536, std=0.0865, range=[1.3251, 1.5665]
+  - c: mean=0.7709, std=0.0864, range=[0.6175, 0.8733]
+  - i: mean=0.6769, std=0.0683, range=[0.5556, 0.7500]
+  - kappa: mean=0.9997, std=0.0006, range=[0.9984, 1.0000]
+  - s: mean=1.4477, std=0.0957, range=[1.2954, 1.5665]
 
 ### Hallucination-Risk (`bench_hallucination`)
 
 - **Steps:** 5
 - **Regime counts:** {'hallucination-risk': 5}
-- **Avg scores:** C=0.8627, I=0.3266, κ=0.9663, S=1.1792
+- **Avg scores:** C=0.8475, I=0.3206, κ=0.9637, S=1.1584
 - **Rolling window (20):**
-  - c: mean=0.8627, std=0.0679, range=[0.7469, 0.9601]
-  - i: mean=0.3266, std=0.0133, range=[0.3000, 0.3333]
-  - kappa: mean=0.9663, std=0.0674, range=[0.8314, 1.0000]
-  - s: mean=1.1792, std=0.0981, range=[0.9963, 1.2935]
+  - c: mean=0.8475, std=0.0950, range=[0.6712, 0.9601]
+  - i: mean=0.3206, std=0.0253, range=[0.2700, 0.3333]
+  - kappa: mean=0.9637, std=0.0727, range=[0.8183, 1.0000]
+  - s: mean=1.1584, std=0.1377, range=[0.8922, 1.2935]
 
 ### Rigid (`bench_rigid`)
 
 - **Steps:** 5
-- **Regime counts:** {'creative-grounded': 1, 'rigid': 4}
-- **Avg scores:** C=0.6096, I=0.6766, κ=1.0000, S=1.2862
+- **Regime counts:** {'creative-grounded': 2, 'rigid': 3}
+- **Avg scores:** C=0.5878, I=0.6288, κ=1.0000, S=1.2166
 - **Rolling window (20):**
-  - c: mean=0.6096, std=0.1399, range=[0.4315, 0.8609]
-  - i: mean=0.6766, std=0.1247, range=[0.4545, 0.8333]
-  - kappa: mean=1.0000, std=0.0000, range=[1.0000, 1.0000]
-  - s: mean=1.2862, std=0.1117, range=[1.0957, 1.4348]
+  - c: mean=0.5878, std=0.1569, range=[0.3939, 0.8609]
+  - i: mean=0.6288, std=0.1604, range=[0.4265, 0.8333]
+  - kappa: mean=1.0000, std=0.0000, range=[0.9999, 1.0000]
+  - s: mean=1.2166, std=0.1897, range=[0.9109, 1.4348]
 
 ### Collapse (`bench_collapse`)
 
 - **Steps:** 5
 - **Regime counts:** {'collapse': 5}
-- **Avg scores:** C=0.4505, I=0.3191, κ=0.2191, S=0.5207
+- **Avg scores:** C=0.4358, I=0.3101, κ=0.2239, S=0.5053
 - **Rolling window (20):**
-  - c: mean=0.4505, std=0.1341, range=[0.2500, 0.6250]
-  - i: mean=0.3191, std=0.0283, range=[0.2625, 0.3333]
-  - kappa: mean=0.2191, std=0.0386, range=[0.1677, 0.2746]
-  - s: mean=0.5207, std=0.1213, range=[0.3338, 0.6809]
+  - c: mean=0.4358, std=0.1239, range=[0.2500, 0.6250]
+  - i: mean=0.3101, std=0.0463, range=[0.2175, 0.3333]
+  - kappa: mean=0.2239, std=0.0371, range=[0.1677, 0.2746]
+  - s: mean=0.5053, std=0.1121, range=[0.3338, 0.6809]
 
 ### Edge Cases (`bench_edge`)
 
@@ -480,19 +480,20 @@ Sessions returned by `GET /v1/sessions`: bench_creative, bench_hallucination, be
 
 ## Key Observations
 
-**2 regime mismatches** detected:
+**3 regime mismatches** detected:
 
 - `rigid-02-template-response`: expected `rigid`, got `creative-grounded` (C=0.8609, I=0.4545, κ=1.0000)
+- `rigid-03-over-constrained`: expected `rigid`, got `creative-grounded` (C=0.4844, I=0.4265, κ=0.9999)
 - `edge-01-creative-but-no-retrieval`: expected `creative-grounded`, got `hallucination-risk` (C=0.8640, I=0.3333, κ=1.0000)
 
 ### Score Distributions by Expected Regime
 
 | Regime | Avg C | Avg I | Avg κ | Avg S |
 |--------|-------|-------|-------|-------|
-| creative-grounded | 0.8381 | 0.6032 | 0.9998 | 1.4412 |
-| hallucination-risk | 0.8627 | 0.3266 | 0.9663 | 1.1792 |
-| rigid | 0.6074 | 0.6934 | 1.0000 | 1.3008 |
-| collapse | 0.4505 | 0.3191 | 0.2191 | 0.5207 |
+| creative-grounded | 0.8318 | 0.6062 | 0.9998 | 1.4379 |
+| hallucination-risk | 0.8475 | 0.3206 | 0.9637 | 1.1584 |
+| rigid | 0.5891 | 0.6536 | 1.0000 | 1.2428 |
+| collapse | 0.4358 | 0.3101 | 0.2239 | 0.5053 |
 
 ---
 
