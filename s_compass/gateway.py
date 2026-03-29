@@ -117,6 +117,10 @@ class SCompassGateway:
         self._trace_graphs[step.trace_id] = coherence
 
         # 4-5. Score
+        # Auto-detect gray-box mode when signals are present.
+        if step.gray_box is not None and step.mode == "black-box":
+            step.mode = "gray-box"
+
         snapshot: ScoreSnapshot = score_step(step)
         self.store.add_score(session_id, snapshot)
 
@@ -148,6 +152,8 @@ class SCompassGateway:
                 "s": snapshot.s,
             },
             "regime": snapshot.regime,
+            "confidence": snapshot.confidence,
+            "mode": step.mode,
             "policy": {"action": policy.action, "reason": policy.reason},
         }
 

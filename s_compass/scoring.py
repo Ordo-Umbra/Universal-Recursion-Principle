@@ -13,6 +13,11 @@ from typing import Dict
 
 from .schemas import ScoreSnapshot, StepInput
 from .estimators import estimate_c, estimate_i, estimate_kappa
+from .estimators_graybox import (
+    estimate_c_graybox,
+    estimate_i_graybox,
+    estimate_kappa_graybox,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -67,10 +72,23 @@ def score_step(step: StepInput) -> ScoreSnapshot:
 
     Combines the C, I, and κ estimators into the S-functional
     ``S = C + κ I`` and returns a :class:`ScoreSnapshot`.
+
+    When gray-box signals are present the higher-fidelity gray-box
+    estimators are used and ``confidence`` is raised accordingly.
     """
-    c = estimate_c(step)
-    i = estimate_i(step)
-    kappa = estimate_kappa(step)
+    use_gray = step.mode == "gray-box" and step.gray_box is not None
+
+    if use_gray:
+        c = estimate_c_graybox(step)
+        i = estimate_i_graybox(step)
+        kappa = estimate_kappa_graybox(step)
+        confidence = 0.85
+    else:
+        c = estimate_c(step)
+        i = estimate_i(step)
+        kappa = estimate_kappa(step)
+        confidence = 0.65
+
     s = c + kappa * i  # core URP formula
     regime = classify_regime(c, i, kappa)
     return ScoreSnapshot(
@@ -80,6 +98,7 @@ def score_step(step: StepInput) -> ScoreSnapshot:
         s=round(s, 4),
         regime=regime,
         trace_id=step.trace_id,
+        confidence=round(confidence, 4),
     )
 
 

@@ -133,6 +133,31 @@ class RetrievedChunk:
 
 
 @dataclass
+class GrayBoxSignals:
+    """Optional gray-box telemetry signals (Design-doc §6.2, §19.1).
+
+    These signals are available when the model provider exposes richer
+    introspection than pure black-box mode.  All fields are optional so
+    that callers can supply whichever subset their provider supports.
+    """
+
+    logprobs: Optional[List[float]] = None
+    """Per-token log-probabilities from the language model."""
+
+    token_entropy: Optional[List[float]] = None
+    """Per-token Shannon entropy (nats or bits, provider-dependent)."""
+
+    relevance_scores: Optional[List[float]] = None
+    """Per-chunk relevance scores from the retriever."""
+
+    tool_confidence: Optional[Dict[str, float]] = None
+    """Mapping of tool name → confidence score in [0, 1]."""
+
+    decoding_instability: Optional[float] = None
+    """Scalar instability signal (e.g. temperature/top-k adjustments)."""
+
+
+@dataclass
 class StepInput:
     """All telemetry for a single inference step (Design-doc §8.2, §19.1)."""
 
@@ -154,3 +179,5 @@ class StepInput:
     tool_failure_count: int = 0
     tool_total_count: int = 0
     history: List[str] = field(default_factory=list)
+    gray_box: Optional[GrayBoxSignals] = None
+    mode: str = "black-box"

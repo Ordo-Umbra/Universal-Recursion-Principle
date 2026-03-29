@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 from flask import Flask, jsonify, request
 
 from .gateway import SCompassGateway
-from .schemas import Claim, RetrievedChunk, ScoreSnapshot, StepInput
+from .schemas import Claim, GrayBoxSignals, RetrievedChunk, ScoreSnapshot, StepInput
 from .policy import evaluate as evaluate_policy
 from .scoring import classify_regime
 
@@ -127,6 +127,18 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
             tool_total_count=capacity.get("tool_total_count", 0),
             history=body.get("history", []),
         )
+
+        # Gray-box signals (Design-doc §6.2)
+        raw_gb = body.get("gray_box_signals")
+        if raw_gb and isinstance(raw_gb, dict):
+            step.gray_box = GrayBoxSignals(
+                logprobs=raw_gb.get("logprobs"),
+                token_entropy=raw_gb.get("token_entropy"),
+                relevance_scores=raw_gb.get("relevance_scores"),
+                tool_confidence=raw_gb.get("tool_confidence"),
+                decoding_instability=raw_gb.get("decoding_instability"),
+            )
+            step.mode = body.get("mode", "gray-box")
 
         if body.get("step_id"):
             step.step_id = body["step_id"]

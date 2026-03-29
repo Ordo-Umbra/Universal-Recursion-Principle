@@ -23,6 +23,7 @@ from .schemas import (
     Claim,
     Event,
     Evidence,
+    GrayBoxSignals,
     GraphEdge,
     PolicyAction,
     RetrievedChunk,
@@ -36,6 +37,11 @@ from .estimators import (
     estimate_i,
     estimate_kappa,
     normalize,
+)
+from .estimators_graybox import (
+    estimate_c_graybox,
+    estimate_i_graybox,
+    estimate_kappa_graybox,
 )
 from .scoring import classify_regime, score_step, score_step_dict
 from .policy import evaluate as evaluate_policy
@@ -57,18 +63,23 @@ __all__ = [
     "Claim",
     "Event",
     "Evidence",
+    "GrayBoxSignals",
     "GraphEdge",
     "PolicyAction",
     "RetrievedChunk",
     "ScoreSnapshot",
     "StepInput",
     "VALID_EVENT_TYPES",
-    # Estimators
+    # Estimators (black-box)
     "capacity_field",
     "estimate_c",
     "estimate_i",
     "estimate_kappa",
     "normalize",
+    # Estimators (gray-box)
+    "estimate_c_graybox",
+    "estimate_i_graybox",
+    "estimate_kappa_graybox",
     # Scoring
     "classify_regime",
     "score_step",
