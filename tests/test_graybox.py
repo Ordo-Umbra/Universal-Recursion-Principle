@@ -67,7 +67,7 @@ def _make_gray_step(**overrides) -> StepInput:
     defaults = dict(
         session_id="sess_test",
         prompt="Explain URP with details.",
-        output_text="URP is a recursive framework that maximises S across scales.",
+        output_text="URP is a recursive framework that maximizes S across scales.",
         gray_box=gb,
         mode="gray-box",
         retrieved_context=[
