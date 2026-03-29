@@ -1,19 +1,19 @@
 # S Compass API Benchmark Report
 
-**Generated:** 2026-03-28T21:29:12.032306+00:00
+**Generated:** 2026-03-29T13:49:25.329615+00:00
 
 **Corpus size:** 25 scenarios
 
-**Overall regime accuracy:** 15/25 (60.0%)
+**Overall regime accuracy:** 21/25 (84.0%)
 
 ## Per-Regime Accuracy
 
 | Regime | Precision | Recall | F1 | TP | FP | FN |
 |--------|-----------|--------|----|----|----|----|
-| creative-grounded | 0.53 | 0.89 | 0.67 | 8 | 7 | 1 |
-| hallucination-risk | 0.71 | 1.00 | 0.83 | 5 | 2 | 0 |
-| rigid | 0.00 | 0.00 | 0.00 | 0 | 1 | 6 |
-| collapse | 1.00 | 0.40 | 0.57 | 2 | 0 | 3 |
+| creative-grounded | 0.73 | 0.89 | 0.80 | 8 | 3 | 1 |
+| hallucination-risk | 0.83 | 1.00 | 0.91 | 5 | 1 | 0 |
+| rigid | 1.00 | 0.50 | 0.67 | 3 | 0 | 3 |
+| collapse | 1.00 | 1.00 | 1.00 | 5 | 0 | 0 |
 
 ## Confusion Matrix
 
@@ -23,8 +23,8 @@ _Rows = expected, Columns = computed_
 |---|---|---|---|---|
 | **creative-grounded** | **8** | 1 | 0 | 0 |
 | **hallucination-risk** | 0 | **5** | 0 | 0 |
-| **rigid** | 6 | 0 | **0** | 0 |
-| **collapse** | 1 | 1 | 1 | **2** |
+| **rigid** | 3 | 0 | **3** | 0 |
+| **collapse** | 0 | 0 | 0 | **5** |
 
 ## Scenario Details
 
@@ -39,7 +39,7 @@ _Clear explanation with novel framing and cited sources_
 - **Output preview:** The Universal Recursion Principle proposes that all persistent systems, from atoms to economies, share one dynamical law...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.9415, I=0.5833, κ=1.0000, S=1.5248
+- **Scores:** C=0.8165, I=0.7500, κ=1.0000, S=1.5665
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -53,7 +53,7 @@ _Technical explanation connecting theory to practice with retrieval_
 - **Output preview:** In a transformer, the S-functional decomposes per layer. Distinction C maps to the predictive entropy of the hidden-stat...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.8831, I=0.4444, κ=1.0000, S=1.3275
+- **Scores:** C=0.7973, I=0.5556, κ=1.0000, S=1.3528
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -67,7 +67,7 @@ _Cross-domain synthesis linking biology and physics under URP_
 - **Output preview:** Living cells operate as Maxwell's demons: they extract information from their environment to maintain internal order aga...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.9567, I=0.4444, κ=1.0000, S=1.4011
+- **Scores:** C=0.8733, I=0.5556, κ=1.0000, S=1.4289
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -81,7 +81,7 @@ _Short but precise answer with good grounding_
 - **Output preview:** The S-functional is S = ΔC + κΔI, where ΔC measures the growth of meaningful distinctions, ΔI measures coherent integrat...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.8740, I=0.5000, κ=1.0000, S=1.3740
+- **Scores:** C=0.7490, I=0.6667, κ=1.0000, S=1.4157
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -95,7 +95,7 @@ _Answer synthesizing multiple retrieved documents_
 - **Output preview:** Under URP, gauge symmetries emerge when a field undergoes β-sectorisation: the S-maximizing dynamics partition the field...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.9484, I=0.5333, κ=1.0000, S=1.4818
+- **Scores:** C=0.7984, I=0.7333, κ=1.0000, S=1.5318
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -179,7 +179,7 @@ _Near-verbatim repetition of the source material_
 - **Output preview:** URP is URP. URP is the Universal Recursion Principle. The Universal Recursion Principle is URP. URP proposes URP. The pr...
 - **Expected regime:** `rigid`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.7750, I=0.4444, κ=1.0000, S=1.2195
+- **Scores:** C=0.6639, I=0.5556, κ=1.0000, S=1.2195
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -193,7 +193,7 @@ _Formulaic, low-diversity answer that copies structure exactly_
 - **Output preview:** The S Compass is a system. The system has a gateway. The gateway processes steps. The steps have scores. The scores have...
 - **Expected regime:** `rigid`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.9064, I=0.3939, κ=1.0000, S=1.3003
+- **Scores:** C=0.8609, I=0.4545, κ=1.0000, S=1.3154
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -207,50 +207,50 @@ _Extremely conservative answer that adds nothing_
 - **Output preview:** Based on the documentation, URP proposes S = ΔC + κΔI. Based on the documentation, S measures distinction and integratio...
 - **Expected regime:** `rigid`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.8851, I=0.4667, κ=1.0000, S=1.3518
+- **Scores:** C=0.7824, I=0.6000, κ=1.0000, S=1.3824
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
 ### Rigid 04
 
-#### ❌ `rigid-04-echo-retrieval`
+#### ✅ `rigid-04-echo-retrieval`
 
 _Output is almost word-for-word the retrieved context_
 
 - **Prompt:** Explain the S-functional.
 - **Output preview:** The S-functional is defined as S = ΔC + κΔI. ΔC is the growth of meaningful distinctions. ΔI is the coherent integration...
 - **Expected regime:** `rigid`
-- **Computed regime:** `creative-grounded`
-- **Scores:** C=0.7568, I=0.5333, κ=1.0000, S=1.2901
-- **Policy:** `none` — System is operating in a healthy regime.
+- **Computed regime:** `rigid`
+- **Scores:** C=0.5982, I=0.7333, κ=1.0000, S=1.3315
+- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
 ### Rigid 05
 
-#### ❌ `rigid-05-list-only`
+#### ✅ `rigid-05-list-only`
 
 _Just restates the retrieval as a list, no synthesis_
 
 - **Prompt:** What are the four behavioural regimes?
 - **Output preview:** The four behavioural regimes are: rigid, creative-grounded, hallucination-risk, and collapse. These are the four behavio...
 - **Expected regime:** `rigid`
-- **Computed regime:** `creative-grounded`
-- **Scores:** C=0.8885, I=0.5000, κ=1.0000, S=1.3885
-- **Policy:** `none` — System is operating in a healthy regime.
+- **Computed regime:** `rigid`
+- **Scores:** C=0.6014, I=0.8333, κ=1.0000, S=1.4348
+- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
 ### Collapse 01
 
-#### ❌ `collapse-01-empty-output`
+#### ✅ `collapse-01-empty-output`
 
 _Model produces essentially no content under high context load_
 
 - **Prompt:** Explain quantum field theory using URP.
 - **Output preview:** I I I...
 - **Expected regime:** `collapse`
-- **Computed regime:** `rigid`
-- **Scores:** C=0.2500, I=1.0000, κ=0.2515, S=0.5015
-- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
+- **Computed regime:** `collapse`
+- **Scores:** C=0.2500, I=0.3333, κ=0.2515, S=0.3338
+- **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
 ### Collapse 02
@@ -269,16 +269,16 @@ _Degenerate single-token loop under system stress_
 
 ### Collapse 03
 
-#### ❌ `collapse-03-incoherent-fragments`
+#### ✅ `collapse-03-incoherent-fragments`
 
 _Token soup with no structure, tools failing_
 
 - **Prompt:** Describe the policy engine.
 - **Output preview:** a z q . . . x x x 1 2 3 . . . end end end end...
 - **Expected regime:** `collapse`
-- **Computed regime:** `hallucination-risk`
-- **Scores:** C=0.7594, I=0.3333, κ=0.2033, S=0.8271
-- **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
+- **Computed regime:** `collapse`
+- **Scores:** C=0.7802, I=0.3333, κ=0.2033, S=0.8480
+- **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
 ### Collapse 04
@@ -297,16 +297,16 @@ _Totally unrelated output under system stress_
 
 ### Collapse
 
-#### ❌ `collapse-05-truncated`
+#### ✅ `collapse-05-truncated`
 
 _Output cut off mid-sentence suggesting generation failure_
 
 - **Prompt:** Explain the relationship between URP and gauge theory.
 - **Output preview:** The relationship between...
 - **Expected regime:** `collapse`
-- **Computed regime:** `creative-grounded`
-- **Scores:** C=0.6250, I=1.0000, κ=0.1677, S=0.7927
-- **Policy:** `none` — System is operating in a healthy regime.
+- **Computed regime:** `collapse`
+- **Scores:** C=0.6250, I=0.3333, κ=0.1677, S=0.6809
+- **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
 ### Edge 01 Creative But
@@ -319,7 +319,7 @@ _Novel and diverse output but no retrieval context at all_
 - **Output preview:** Music composition can be read through the S-functional lens. A melody introduces new intervals and rhythmic patterns (ΔC...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `hallucination-risk`
-- **Scores:** C=0.8669, I=0.3333, κ=1.0000, S=1.2002
+- **Scores:** C=0.8640, I=0.3333, κ=1.0000, S=1.1974
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
 
 
@@ -347,22 +347,22 @@ _Long output mixing valid claims with some unsupported ones_
 - **Output preview:** URP makes several physics predictions that have been tested computationally. First, the helium ionization potential is p...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.9613, I=0.4762, κ=1.0000, S=1.4374
+- **Scores:** C=0.8898, I=0.5714, κ=1.0000, S=1.4613
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
 ### Edge 04 Borderline
 
-#### ❌ `edge-04-borderline-rigid-creative`
+#### ✅ `edge-04-borderline-rigid-creative`
 
 _Decent answer but heavily derivative of retrieval_
 
 - **Prompt:** What is the manifesto about?
 - **Output preview:** The manifesto states the practical objective: change the attractor that human and machine systems optimize for. It propo...
 - **Expected regime:** `rigid`
-- **Computed regime:** `creative-grounded`
-- **Scores:** C=0.7628, I=0.5556, κ=1.0000, S=1.3183
-- **Policy:** `none` — System is operating in a healthy regime.
+- **Computed regime:** `rigid`
+- **Scores:** C=0.5961, I=0.7778, κ=1.0000, S=1.3739
+- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
 ### Edge 05 Borderline
@@ -375,7 +375,7 @@ _Mostly good but ventures into unsupported territory_
 - **Output preview:** URP does not directly address dark matter in the current framework documents. However, the field-theoretic formulation s...
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
-- **Scores:** C=0.9757, I=0.4167, κ=1.0000, S=1.3924
+- **Scores:** C=0.9132, I=0.5000, κ=1.0000, S=1.4132
 - **Policy:** `none` — System is operating in a healthy regime.
 
 ## Session Summaries
@@ -384,12 +384,12 @@ _Mostly good but ventures into unsupported territory_
 
 - **Steps:** 5
 - **Regime counts:** {'creative-grounded': 5}
-- **Avg scores:** C=0.9207, I=0.5011, κ=1.0000, S=1.4218
+- **Avg scores:** C=0.8069, I=0.6522, κ=1.0000, S=1.4591
 - **Rolling window (20):**
-  - c: mean=0.9207, std=0.0349, range=[0.8740, 0.9567]
-  - i: mean=0.5011, std=0.0533, range=[0.4444, 0.5833]
+  - c: mean=0.8069, std=0.0400, range=[0.7490, 0.8733]
+  - i: mean=0.6522, std=0.0837, range=[0.5556, 0.7500]
   - kappa: mean=1.0000, std=0.0000, range=[1.0000, 1.0000]
-  - s: mean=1.4218, std=0.0719, range=[1.3275, 1.5248]
+  - s: mean=1.4591, std=0.0786, range=[1.3528, 1.5665]
 
 ### Hallucination-Risk (`bench_hallucination`)
 
@@ -405,35 +405,35 @@ _Mostly good but ventures into unsupported territory_
 ### Rigid (`bench_rigid`)
 
 - **Steps:** 5
-- **Regime counts:** {'creative-grounded': 5}
-- **Avg scores:** C=0.8424, I=0.4677, κ=1.0000, S=1.3100
+- **Regime counts:** {'creative-grounded': 3, 'rigid': 2}
+- **Avg scores:** C=0.7014, I=0.6353, κ=1.0000, S=1.3367
 - **Rolling window (20):**
-  - c: mean=0.8424, std=0.0631, range=[0.7568, 0.9064]
-  - i: mean=0.4677, std=0.0476, range=[0.3939, 0.5333]
+  - c: mean=0.7014, std=0.1040, range=[0.5982, 0.8609]
+  - i: mean=0.6353, std=0.1335, range=[0.4545, 0.8333]
   - kappa: mean=1.0000, std=0.0000, range=[1.0000, 1.0000]
-  - s: mean=1.3100, std=0.0576, range=[1.2195, 1.3885]
+  - s: mean=1.3367, std=0.0720, range=[1.2195, 1.4348]
 
 ### Collapse (`bench_collapse`)
 
 - **Steps:** 5
-- **Regime counts:** {'collapse': 2, 'creative-grounded': 1, 'hallucination-risk': 1, 'rigid': 1}
-- **Avg scores:** C=0.4885, I=0.6000, κ=0.2204, S=0.6178
+- **Regime counts:** {'collapse': 5}
+- **Avg scores:** C=0.4927, I=0.3333, κ=0.2204, S=0.5661
 - **Rolling window (20):**
-  - c: mean=0.4885, std=0.1811, range=[0.2500, 0.7594]
-  - i: mean=0.6000, std=0.3266, range=[0.3333, 1.0000]
+  - c: mean=0.4927, std=0.1874, range=[0.2500, 0.7802]
+  - i: mean=0.3333, std=0.0000, range=[0.3333, 0.3333]
   - kappa: mean=0.2204, std=0.0380, range=[0.1677, 0.2746]
-  - s: mean=0.6178, std=0.1574, range=[0.4746, 0.8271]
+  - s: mean=0.5661, std=0.1790, range=[0.3338, 0.8480]
 
 ### Edge Cases (`bench_edge`)
 
 - **Steps:** 5
-- **Regime counts:** {'creative-grounded': 4, 'hallucination-risk': 1}
-- **Avg scores:** C=0.9063, I=0.4897, κ=1.0000, S=1.3959
+- **Regime counts:** {'creative-grounded': 3, 'hallucination-risk': 1, 'rigid': 1}
+- **Avg scores:** C=0.8455, I=0.5698, κ=1.0000, S=1.4154
 - **Rolling window (20):**
-  - c: mean=0.9063, std=0.0817, range=[0.7628, 0.9757]
-  - i: mean=0.4897, std=0.1146, range=[0.3333, 0.6667]
+  - c: mean=0.8455, std=0.1291, range=[0.5961, 0.9646]
+  - i: mean=0.5698, std=0.1506, range=[0.3333, 0.7778]
   - kappa: mean=1.0000, std=0.0000, range=[1.0000, 1.0000]
-  - s: mean=1.3959, std=0.1425, range=[1.2002, 1.6313]
+  - s: mean=1.4154, std=0.1400, range=[1.1974, 1.6313]
 
 ## Standalone Policy Evaluation
 
@@ -453,71 +453,22 @@ Sessions returned by `GET /v1/sessions`: bench_creative, bench_hallucination, be
 
 ## Key Observations
 
-**10 regime mismatches** detected:
+**4 regime mismatches** detected:
 
-- `rigid-01-rote-repetition`: expected `rigid`, got `creative-grounded` (C=0.7750, I=0.4444, κ=1.0000)
-- `rigid-02-template-response`: expected `rigid`, got `creative-grounded` (C=0.9064, I=0.3939, κ=1.0000)
-- `rigid-03-over-constrained`: expected `rigid`, got `creative-grounded` (C=0.8851, I=0.4667, κ=1.0000)
-- `rigid-04-echo-retrieval`: expected `rigid`, got `creative-grounded` (C=0.7568, I=0.5333, κ=1.0000)
-- `rigid-05-list-only`: expected `rigid`, got `creative-grounded` (C=0.8885, I=0.5000, κ=1.0000)
-- `collapse-01-empty-output`: expected `collapse`, got `rigid` (C=0.2500, I=1.0000, κ=0.2515)
-- `collapse-03-incoherent-fragments`: expected `collapse`, got `hallucination-risk` (C=0.7594, I=0.3333, κ=0.2033)
-- `collapse-05-truncated`: expected `collapse`, got `creative-grounded` (C=0.6250, I=1.0000, κ=0.1677)
-- `edge-01-creative-but-no-retrieval`: expected `creative-grounded`, got `hallucination-risk` (C=0.8669, I=0.3333, κ=1.0000)
-- `edge-04-borderline-rigid-creative`: expected `rigid`, got `creative-grounded` (C=0.7628, I=0.5556, κ=1.0000)
+- `rigid-01-rote-repetition`: expected `rigid`, got `creative-grounded` (C=0.6639, I=0.5556, κ=1.0000)
+- `rigid-02-template-response`: expected `rigid`, got `creative-grounded` (C=0.8609, I=0.4545, κ=1.0000)
+- `rigid-03-over-constrained`: expected `rigid`, got `creative-grounded` (C=0.7824, I=0.6000, κ=1.0000)
+- `edge-01-creative-but-no-retrieval`: expected `creative-grounded`, got `hallucination-risk` (C=0.8640, I=0.3333, κ=1.0000)
 
 ### Score Distributions by Expected Regime
 
 | Regime | Avg C | Avg I | Avg κ | Avg S |
 |--------|-------|-------|-------|-------|
-| creative-grounded | 0.9302 | 0.4887 | 1.0000 | 1.4189 |
+| creative-grounded | 0.8518 | 0.5925 | 1.0000 | 1.4443 |
 | hallucination-risk | 0.8875 | 0.3333 | 1.0000 | 1.2208 |
-| rigid | 0.8291 | 0.4823 | 1.0000 | 1.3114 |
-| collapse | 0.4885 | 0.6000 | 0.2204 | 0.6178 |
+| rigid | 0.6838 | 0.6591 | 1.0000 | 1.3429 |
+| collapse | 0.4927 | 0.3333 | 0.2204 | 0.5661 |
 
 ---
 
 *Report generated by `benchmarks/run_api_benchmark.py` against the S Compass REST API.*
-
-## Analysis & Next Steps
-
-### What Works Well
-
-1. **Creative-grounded detection (89% recall):** The estimators correctly identify well-structured, novel, cited outputs. C scores are consistently high (avg 0.93), I scores reflect citation coverage, and κ stays at 1.0 (no system stress).
-
-2. **Hallucination-risk detection (100% recall, 71% precision):** After fixing the pipeline to feed extracted claims into the I estimator, every hallucination scenario is correctly flagged. The key signal: high C (diverse, fluent text) but low I (no citations to support the claims). The policy engine correctly recommends `require_grounded_regeneration`.
-
-3. **Capacity signals work:** κ drops to 0.17–0.25 for collapse scenarios with realistic stress signals (high context load, latency spikes, tool failures). The API now accepts `capacity` fields and they flow through to the κ estimator correctly.
-
-4. **Policy evaluation is exact:** All 5 standalone policy test vectors match expected regime labels and actions with 100% accuracy.
-
-5. **Score separation is directional:** Average S decreases monotonically from creative-grounded (1.42) → hallucination-risk (1.22) → rigid (1.31) → collapse (0.62). The ordering creative > rigid is slightly inverted because rigid detection doesn't work yet.
-
-### What Needs Improvement
-
-1. **Rigid detection (0% recall):** All rigid scenarios are classified as `creative-grounded`. Root cause: the C estimator's `_token_entropy` gives high scores even for semantically repetitive text because the tokens themselves are somewhat diverse. The rigid threshold requires C ≤ 0.35, but actual rigid scenarios score 0.76–0.91. **Fix:** Add a `_semantic_similarity_to_retrieval` component that heavily penalizes near-verbatim copying, or lower the weight of token entropy relative to anti-repetition.
-
-2. **Collapse detection (40% recall):** Three issues compound:
-   - Very short outputs (< 4 words) produce zero extracted claims, causing I to default to 1.0 ("vacuously covered"). This masks the degenerate output.
-   - Token entropy for incoherent fragments (random tokens) is paradoxically high — diverse gibberish looks "novel."
-   - κ only drops when capacity telemetry is provided; without it, even degenerate output gets κ=1.0.
-   **Fix:** Add a minimum-content check: if output has fewer than N tokens or N claims, flag as degenerate regardless of C/I values.
-
-3. **I estimator's vacuous-coverage bug:** When no claims are extracted (output too short), `_citation_coverage` returns 1.0. This is logically valid but diagnostically wrong — the absence of claims should signal low integration, not perfect coverage. **Fix:** Return 0.0 when claims list is empty and output text has fewer than ~20 tokens.
-
-4. **C estimator doesn't detect semantic repetition:** The current `_anti_repetition` metric counts unique bigrams but doesn't catch semantically identical sentences with slightly different phrasing. Rigid scenario `rigid-03-over-constrained` repeats "Based on the documentation" five times but scores C=0.89 because each occurrence has different surrounding tokens. **Fix:** Add TF-IDF or n-gram overlap ratio between sentences within the output.
-
-### Pipeline Bug Fixed
-
-The benchmark discovered and we fixed a real pipeline bug: `gateway.submit_step()` extracted claims via `extract_and_link()` but never fed them back into the `StepInput` before calling `score_step()`. This caused I to always equal 1.0 in the API path (the claims list was empty). The fix adds extracted claims back to the step when no manual claims were provided.
-
-### API Enhancement
-
-The `POST /v1/step` endpoint now accepts a `capacity` field with operational telemetry (`context_tokens_used`, `context_window`, `latency_ms`, `latency_history`, `tool_failure_count`, `tool_total_count`) and a `history` field for cross-turn consistency. These signals flow through to the κ and I estimators respectively.
-
-### Regenerating This Report
-
-```bash
-python -m benchmarks.run_api_benchmark -o benchmarks/REPORT.md
-python -m pytest tests/test_benchmark.py -v
-```
