@@ -24,6 +24,7 @@ _C_LOW = 0.35
 _I_HIGH = 0.55
 _I_LOW = 0.35
 _K_LOW = 0.45
+_K_CRITICAL = 0.25
 
 
 def classify_regime(c: float, i: float, kappa: float) -> str:
@@ -38,9 +39,11 @@ def classify_regime(c: float, i: float, kappa: float) -> str:
     """
     if c <= _C_LOW and i <= _I_LOW and kappa < _K_LOW:
         return "collapse"
+    if kappa < _K_CRITICAL and i <= _I_LOW:
+        return "collapse"
     if c >= _C_HIGH and i < _I_LOW:
         return "hallucination-risk"
-    if c <= _C_LOW and i >= _I_HIGH:
+    if (c < _C_HIGH or i - c >= 0.10) and i >= _I_HIGH and kappa >= _K_LOW:
         return "rigid"
     if c >= _C_HIGH and i >= _I_LOW:
         return "creative-grounded"

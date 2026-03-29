@@ -172,6 +172,36 @@ class TestRegimeClassification:
                 f"got {s['computed_regime']}"
             )
 
+    def test_collapse_all_match(self, benchmark_results):
+        """Collapse scenarios should all be classified correctly."""
+        collapse = [
+            s for s in benchmark_results["scenarios"]
+            if s["label"].startswith("collapse-")
+        ]
+        for s in collapse:
+            assert s["match"], (
+                f"{s['label']}: expected {s['expected_regime']}, "
+                f"got {s['computed_regime']}"
+            )
+
+    def test_rigid_well_separated_match(self, benchmark_results):
+        """Well-separated rigid scenarios should be classified correctly.
+
+        Rigid scenarios whose output directly echoes retrieval context
+        (high I, lower C) should be detected.  Structurally rigid but
+        lexically diverse scenarios may still be borderline.
+        """
+        well_separated = {"rigid-04-echo-retrieval", "rigid-05-list-only"}
+        rigid = [
+            s for s in benchmark_results["scenarios"]
+            if s["label"] in well_separated
+        ]
+        for s in rigid:
+            assert s["match"], (
+                f"{s['label']}: expected {s['expected_regime']}, "
+                f"got {s['computed_regime']}"
+            )
+
     def test_hallucination_triggers_policy(self, benchmark_results):
         """Hallucination-risk scenarios should trigger grounded regeneration."""
         hallucination = [
@@ -193,6 +223,21 @@ class TestRegimeClassification:
         for s in creative:
             assert s["policy"]["action"] == "none", (
                 f"{s['label']}: expected none, got {s['policy']['action']}"
+            )
+
+    def test_collapse_triggers_policy(self, benchmark_results):
+        """Collapse scenarios should trigger a load-reduction or retry policy."""
+        collapse = [
+            s for s in benchmark_results["scenarios"]
+            if s["label"].startswith("collapse-")
+        ]
+        for s in collapse:
+            assert s["policy"]["action"] in (
+                "reduce_load_and_retry",
+                "increase_novelty",
+            ), (
+                f"{s['label']}: expected reduce_load_and_retry or "
+                f"increase_novelty, got {s['policy']['action']}"
             )
 
 

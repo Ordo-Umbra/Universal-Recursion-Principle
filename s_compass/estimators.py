@@ -11,6 +11,7 @@ changing the scoring signature.
 from __future__ import annotations
 
 import math
+import re
 from typing import Dict, List, Sequence
 
 import numpy as np
@@ -136,14 +137,26 @@ def _claim_novelty(claims: List[Claim], citations: list) -> float:
         return 0.0
     if not citations:
         return 1.0
-    cited_texts = {str(c.get("text", c.get("doc_id", ""))) for c in citations}
-    novel = sum(1 for cl in claims if cl.text not in cited_texts)
+    cited_text_list = [
+        str(c.get("text", c.get("doc_id", ""))).lower()
+        for c in citations
+    ]
+    novel = sum(
+        1
+        for cl in claims
+        if not any(ct in cl.text.lower() for ct in cited_text_list if ct)
+    )
     return novel / len(claims)
 
 
 def _anti_repetition(text: str) -> float:
-    """1 − fraction of repeated token bigrams."""
-    tokens = text.split()
+    """1 − fraction of repeated token bigrams.
+
+    Tokens are lowercased and stripped of trailing punctuation so that
+    ``"URP."`` and ``"URP"`` count as the same token in bigram pairs.
+    """
+    tokens = [re.sub(r'[^\w\s-]', '', t).lower() for t in text.split()]
+    tokens = [t for t in tokens if t]
     if len(tokens) < 2:
         return 1.0
     bigrams = [(tokens[i], tokens[i + 1]) for i in range(len(tokens) - 1)]
@@ -170,7 +183,7 @@ def estimate_c(step: StepInput) -> float:
 def _citation_coverage(claims: List[Claim], citations: list) -> float:
     """Fraction of claims that have at least one matching citation."""
     if not claims:
-        return 1.0  # vacuously covered
+        return 0.0  # no claims means no demonstrated integration
     if not citations:
         return 0.0
     cited_ids = {str(c.get("doc_id", "")) for c in citations}
@@ -179,9 +192,17 @@ def _citation_coverage(claims: List[Claim], citations: list) -> float:
         for cl in claims
         if cl.provenance and cl.provenance.get("source_type") in cited_ids
     )
-    # Simpler heuristic: any claim whose text appears in citation text
-    cited_texts = " ".join(str(c.get("text", "")) for c in citations)
-    text_covered = sum(1 for cl in claims if cl.text.lower() in cited_texts.lower())
+    # Bidirectional substring heuristic: a claim is covered if any citation
+    # text appears within it OR the claim text appears within the joined
+    # citation text.
+    cited_text_list = [str(c.get("text", "")).lower() for c in citations if c.get("text")]
+    joined_cited = " ".join(cited_text_list)
+    text_covered = sum(
+        1
+        for cl in claims
+        if any(ct in cl.text.lower() for ct in cited_text_list)
+        or cl.text.lower() in joined_cited
+    )
     return max(covered, text_covered) / len(claims)
 
 
@@ -196,7 +217,7 @@ def _cross_turn_consistency(output: str, history: List[str]) -> float:
 def _support_graph_connectivity(claims: List[Claim], citations: list) -> float:
     """Proxy for support graph density: ratio of citations to claims."""
     if not claims:
-        return 1.0
+        return 0.0  # no claims means no demonstrated integration
     if not citations:
         return 0.0
     return min(len(citations) / len(claims), 1.0)
