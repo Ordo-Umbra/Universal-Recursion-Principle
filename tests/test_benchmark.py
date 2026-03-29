@@ -32,6 +32,13 @@ from benchmarks.corpus import (
 from benchmarks.run_api_benchmark import run_benchmark
 
 
+GRAY_BOX_LABELS = {
+    scenario["label"]
+    for scenario in ALL_SCENARIOS
+    if scenario.get("gray_box_signals")
+}
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -69,6 +76,16 @@ class TestBenchmarkExecution:
             "bench_rigid",
             "bench_collapse",
             "bench_edge",
+        }
+
+    def test_gray_box_scenarios_are_present(self):
+        """The corpus includes gray-box benchmark traces."""
+        assert GRAY_BOX_LABELS == {
+            "creative-grounded-02-transformer-phases",
+            "hallucination-risk-03-mixed-real-and-fake",
+            "rigid-01-rote-repetition",
+            "rigid-03-over-constrained",
+            "collapse-03-incoherent-fragments",
         }
 
     def test_session_summaries_present(self, benchmark_results):
@@ -133,6 +150,37 @@ class TestScoreValidity:
             expected_s = sc["c"] + sc["kappa"] * sc["i"]
             assert abs(sc["s"] - expected_s) < 0.01, (
                 f"{s['label']}: S={sc['s']} != C+κI={expected_s}"
+            )
+
+    def test_gray_box_confidence_in_bounds(self, benchmark_results):
+        """Benchmark responses expose valid confidence values."""
+        for s in benchmark_results["scenarios"]:
+            assert 0.0 <= s["confidence"] <= 1.0, (
+                f"{s['label']}: confidence={s['confidence']}"
+            )
+
+
+class TestGrayBoxBenchmarking:
+    def test_gray_box_scenarios_run_in_gray_box_mode(self, benchmark_results):
+        """Configured gray-box scenarios should execute in gray-box mode."""
+        by_label = {s["label"]: s for s in benchmark_results["scenarios"]}
+        assert {label for label, s in by_label.items() if s["mode"] == "gray-box"} == GRAY_BOX_LABELS
+
+    def test_gray_box_scenarios_use_high_confidence(self, benchmark_results):
+        """Gray-box benchmark traces should surface the higher confidence value."""
+        for s in benchmark_results["scenarios"]:
+            if s["label"] in GRAY_BOX_LABELS:
+                assert s["confidence"] == pytest.approx(0.85)
+            else:
+                assert s["confidence"] == pytest.approx(0.65)
+
+    def test_gray_box_rigid_scenarios_match(self, benchmark_results):
+        """Representative rigid gray-box traces should classify correctly."""
+        by_label = {s["label"]: s for s in benchmark_results["scenarios"]}
+        for label in {"rigid-01-rote-repetition", "rigid-03-over-constrained"}:
+            assert by_label[label]["match"], (
+                f"{label}: expected {by_label[label]['expected_regime']}, "
+                f"got {by_label[label]['computed_regime']}"
             )
 
 

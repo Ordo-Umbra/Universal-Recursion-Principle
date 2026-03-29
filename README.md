@@ -158,7 +158,7 @@ python -m pytest tests/test_s_compass.py tests/test_extraction.py tests/test_gra
 
 ## 📊 API Benchmark
 
-The `benchmarks/` directory contains a curated corpus of 25 scenarios spanning all four behavioural regimes, plus a runner that exercises every REST API endpoint and produces a structured Markdown report.
+The `benchmarks/` directory contains a curated corpus of 25 scenarios spanning all four behavioural regimes, including gray-box-enriched traces for confidence-aware benchmarking, plus a runner that exercises every REST API endpoint and produces a structured Markdown report.
 
 ### Running the Benchmark
 
@@ -170,6 +170,7 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 ### What the Benchmark Tests
 
 * **25 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes
+* **Gray-box benchmark coverage** with explicit mode/confidence reporting for traces that supply logprobs, relevance scores, and tool-confidence signals
 * **All 7 REST API endpoints**: session start, step submission, session summary, session list, rolling-window stats, trace graph, and policy evaluation
 * **Per-regime precision, recall, and F1** with a confusion matrix
 * **Score distribution analysis** (C, I, κ, S averages by expected regime)
@@ -177,7 +178,7 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 
 ### Current Results
 
-See [benchmarks/REPORT.md](benchmarks/REPORT.md) for the full report, including per-scenario scores, a confusion matrix, and identified estimator gaps.
+See [benchmarks/REPORT.md](benchmarks/REPORT.md) for the full report, including per-scenario mode/confidence, scores, a confusion matrix, and identified estimator gaps.
 
 ### Running Benchmark Tests
 

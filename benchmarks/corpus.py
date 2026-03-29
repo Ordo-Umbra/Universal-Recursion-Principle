@@ -39,6 +39,8 @@ def _scenario(
     temperature: float = 0.7,
     capacity: Dict[str, Any] | None = None,
     history: List[str] | None = None,
+    gray_box_signals: Dict[str, Any] | None = None,
+    mode: str | None = None,
 ) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "label": label,
@@ -56,6 +58,10 @@ def _scenario(
         result["capacity"] = capacity
     if history:
         result["history"] = history
+    if gray_box_signals:
+        result["gray_box_signals"] = gray_box_signals
+    if mode:
+        result["mode"] = mode
     return result
 
 
@@ -124,6 +130,14 @@ CREATIVE_GROUNDED: List[Dict[str, Any]] = [
                 "attention entropy log n − H_attn, κ = 1/(1+βσ²)."
             ), "score": 0.93},
         ],
+        gray_box_signals={
+            "logprobs": [-0.55, -0.72, -0.61, -0.68, -0.49, -0.73, -0.58, -0.66],
+            "token_entropy": [0.65, 0.71, 0.68, 0.72, 0.63, 0.69],
+            "relevance_scores": [0.96, 0.92],
+            "tool_confidence": {"retriever": 0.97, "citation_linker": 0.94},
+            "decoding_instability": 0.03,
+        },
+        mode="gray-box",
     ),
     _scenario(
         label="creative-grounded-03-biology-connection",
@@ -279,6 +293,14 @@ HALLUCINATION_RISK: List[Dict[str, Any]] = [
             "plasma for over 1000 hours continuously."
         ),
         temperature=0.85,
+        gray_box_signals={
+            "logprobs": [-0.62, -0.70, -0.58, -0.67, -0.59, -0.64, -0.73],
+            "token_entropy": [0.82, 0.88, 0.85, 0.90],
+            "relevance_scores": [0.18, 0.22],
+            "tool_confidence": {"retriever": 0.41},
+            "decoding_instability": 0.24,
+        },
+        mode="gray-box",
     ),
     _scenario(
         label="hallucination-risk-04-confident-wrong-analysis",
@@ -359,6 +381,13 @@ RIGID: List[Dict[str, Any]] = [
             ), "score": 0.99},
         ],
         temperature=0.1,
+        gray_box_signals={
+            "logprobs": [-0.01] * 24,
+            "relevance_scores": [0.99],
+            "tool_confidence": {"retriever": 0.99},
+            "decoding_instability": 0.0,
+        },
+        mode="gray-box",
     ),
     _scenario(
         label="rigid-02-template-response",
@@ -409,6 +438,13 @@ RIGID: List[Dict[str, Any]] = [
             ), "score": 0.88},
         ],
         temperature=0.05,
+        gray_box_signals={
+            "logprobs": [-0.01] * 24,
+            "relevance_scores": [0.99],
+            "tool_confidence": {"retriever": 0.99},
+            "decoding_instability": 0.0,
+        },
+        mode="gray-box",
     ),
     _scenario(
         label="rigid-04-echo-retrieval",
@@ -515,6 +551,14 @@ COLLAPSE: List[Dict[str, Any]] = [
             "tool_failure_count": 4,
             "tool_total_count": 5,
         },
+        gray_box_signals={
+            "logprobs": [-0.02, -5.8, -0.01, -6.0, -0.03, -5.5, -0.02],
+            "token_entropy": [0.05, 2.8, 0.08, 3.1],
+            "relevance_scores": [0.05],
+            "tool_confidence": {"tool_a": 0.12, "tool_b": 0.18},
+            "decoding_instability": 0.95,
+        },
+        mode="gray-box",
     ),
     _scenario(
         label="collapse-04-off-topic",
