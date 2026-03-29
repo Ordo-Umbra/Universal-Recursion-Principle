@@ -34,8 +34,8 @@ Taken together, the docs in this repo are not just isolated papers. They are bra
 
 * `/Docs/` - Core papers and notes, including the main end-to-end URP framework, the manifesto, and focused extensions on gauge symmetry, electromagnetism, relativity, fusion, and transformer dynamics.
 * `/Sims/` - Python simulations testing URP claims in atomic physics, gauge emergence, multi-agent dynamics, transformer behavior, S-landscape intuition, biological Maxwell's demons, and layerwise transformer S-functional evolution.
-* `/s_compass/` - The S Compass Python package — a runtime observability and control layer for LLMs, RAG pipelines, and agent systems, implementing the S-functional as a live diagnostic. Supports black-box and gray-box deployment modes with confidence-aware policy control.
-* `/benchmarks/` - Benchmark corpus (25 human-labelled scenarios including gray-box traces) and runner for testing S Compass against all four behavioural regimes, with structured Markdown reports and per-regime accuracy analysis.
+* `/s_compass/` - The S Compass Python package — a runtime observability and control layer for LLMs, RAG pipelines, and agent systems, implementing the S-functional as a live diagnostic. Supports black-box, gray-box, and white-box deployment modes with confidence-aware policy control.
+* `/benchmarks/` - Benchmark corpus (82 human-labelled scenarios spanning black-box, gray-box, and white-box traces) and runner for testing S Compass against all four behavioural regimes, with structured Markdown reports and per-regime accuracy analysis.
 * `/visuals/` - Visual assets and placeholders for the future diagrammatic presentation of the framework.
 
 ## Start Here
@@ -143,9 +143,9 @@ S Compass operates in three modes, depending on what telemetry the model provide
 |------|-------------------|------------------|----------|
 | **Black-box** | Prompt, output, citations, retrieval, tool traces | 0.65 (fixed) | Commercial hosted models (OpenAI, Anthropic, etc.) |
 | **Gray-box** | + logprobs, token entropy, relevance scores, tool confidence, decoding instability | 0.65–0.95 (dynamic) | Providers with richer introspection (e.g. logprob access) |
-| **White-box** | + attention maps, hidden states, layerwise metrics | (planned) | Open-weight or locally hosted models |
+| **White-box** | + attention entropy/variance, head confidence, KV norms, activation sparsity, gradient norms, residual coherence | 0.85–0.99 (dynamic) | Open-weight or locally hosted models (e.g. Llama, Mistral) |
 
-Gray-box mode dynamically adjusts confidence based on how many signals are available, and the policy engine uses this confidence to tune intervention aggressiveness — more signals mean more decisive responses to detected issues.
+All three modes dynamically adjust confidence based on signal coverage, and the policy engine uses this confidence to tune intervention aggressiveness — more signals mean more decisive responses to detected issues. White-box mode achieves the highest fidelity by combining all gray-box signals with layerwise attention and internal architecture metrics.
 
 ### Behavioural regimes
 
@@ -162,17 +162,18 @@ Every scored step is classified into one of four regimes:
 
 | Module | Role | Design-doc section |
 |--------|------|--------------------|
-| `s_compass/schemas.py` | Canonical event envelopes, claims, evidence, scores, policy actions, gray-box signals | §9, §10, §6.2 |
+| `s_compass/schemas.py` | Canonical event envelopes, claims, evidence, scores, policy actions, gray-box and white-box signals | §9, §10, §6.2, §6.3 |
 | `s_compass/telemetry.py` | Telemetry normalizer — converts heterogeneous payloads into canonical events | §4.2 |
 | `s_compass/estimators.py` | Black-box C, I, κ estimators with `normalize` and `capacity_field` helpers; includes structural repetition and retrieval-echo novelty metrics | §4.3–4.5, §11, §19 |
 | `s_compass/estimators_graybox.py` | Gray-box C, I, κ estimators with logprob entropy, relevance quality, contradiction penalty, retrieval overload | §4.3–4.5, §6.2, §19 |
-| `s_compass/scoring.py` | S scoring engine and regime classifier — dispatches to gray-box or black-box estimators based on mode; includes template-rigid detection via structural novelty | §4.6, §12 |
+| `s_compass/estimators_whitebox.py` | White-box C, I, κ estimators enriched with per-layer attention entropy/variance, head diversity, activation sparsity, KV norm stress, gradient norm instability, and residual stream coherence | §4.3–4.5, §6.3, §19 |
+| `s_compass/scoring.py` | S scoring engine and regime classifier — dispatches to white-box, gray-box, or black-box estimators based on mode; includes template-rigid detection via structural novelty | §4.6, §12 |
 | `s_compass/policy.py` | Confidence-aware policy engine — turns scores into actionable recommendations | §4.7 |
 | `s_compass/store.py` | In-memory evaluation store for sessions, steps, scores, and interventions | §4.8 |
 | `s_compass/extraction.py` | Claim extraction, evidence linking, and contradiction detection from model outputs | §4.4, §16 |
 | `s_compass/graph.py` | Coherence graph builder and structural metrics | §4.4, §8.4 |
 | `s_compass/api.py` | REST API — seven endpoints for session, step, graph, window, and policy access | §8 |
-| `s_compass/gateway.py` | Main entry point tying telemetry → extraction → scoring → policy → store, with gray-box auto-detection | §4.1, §5 |
+| `s_compass/gateway.py` | Main entry point tying telemetry → extraction → scoring → policy → store, with white-box and gray-box auto-detection | §4.1, §5 |
 
 ### Quick Start
 
@@ -215,21 +216,51 @@ print(result["mode"])        # 'gray-box' (auto-detected)
 print(result["confidence"])  # 0.80+ (dynamic, based on signal coverage)
 ```
 
+```python
+# White-box mode: supply internal architecture signals for highest-fidelity scoring
+from s_compass.schemas import GrayBoxSignals, WhiteBoxSignals
+
+result = gw.submit_step(StepInput(
+    session_id="sess_001",
+    prompt="Describe the layerwise S-functional evolution.",
+    output_text="Across layers, C grows as attention entropy increases ...",
+    mode="white-box",
+    white_box=WhiteBoxSignals(
+        attention_entropy=[0.5, 0.6, 0.4, 0.55, 0.65, 0.45],
+        attention_variance=[0.05, 0.08, 0.03, 0.06, 0.07, 0.04],
+        head_confidence={"h0": 0.85, "h1": 0.70, "h2": 0.92, "h3": 0.60},
+        kv_norm=[1.2, 1.5, 1.3, 1.1, 1.4, 1.6],
+        activation_sparsity=[0.3, 0.4, 0.35, 0.25, 0.45, 0.38],
+        gradient_norm=[0.01, 0.02, 0.015, 0.008, 0.025],
+        residual_coherence=0.82,
+        layer_count=6,
+    ),
+    gray_box=GrayBoxSignals(               # optional: combine for maximum coverage
+        logprobs=[-0.5, -1.0, -0.3, -2.0],
+        relevance_scores=[0.91, 0.65, 0.40],
+    ),
+))
+
+print(result["mode"])        # 'white-box'
+print(result["confidence"])  # 0.85–0.99 (dynamic, based on signal coverage)
+```
+
 ### Running Tests
 
 ```bash
-# Full test suite (all 284 tests including gray-box, benchmark, and structural metrics tests)
+# Full test suite (all 364 tests including white-box, gray-box, benchmark, and structural metrics tests)
 python -m pytest -v
 
 # Individual test modules
 python -m pytest tests/test_s_compass.py tests/test_extraction.py tests/test_graph.py tests/test_api.py -v
 python -m pytest tests/test_graybox.py -v      # gray-box estimators, scoring dispatch, API parsing
+python -m pytest tests/test_whitebox.py -v     # white-box estimators, scoring dispatch, gateway, API
 python -m pytest tests/test_benchmark.py -v     # benchmark corpus through the REST API
 ```
 
 ## 📊 API Benchmark
 
-The `benchmarks/` directory contains a curated corpus of 25 scenarios spanning all four behavioural regimes, including gray-box-enriched traces for confidence-aware benchmarking, plus a runner that exercises every REST API endpoint and produces a structured Markdown report.
+The `benchmarks/` directory contains a curated corpus of 82 scenarios spanning all four behavioural regimes, including gray-box and white-box enriched traces for confidence-aware benchmarking, plus a runner that exercises every REST API endpoint and produces a structured Markdown report.
 
 ### Running the Benchmark
 
@@ -240,8 +271,9 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 
 ### What the Benchmark Tests
 
-* **28 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes (including 3 new boundary-stress scenarios)
-* **5 gray-box benchmark traces** with explicit mode/confidence reporting for traces that supply logprobs, relevance scores, and tool-confidence signals
+* **82 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes (15 creative, 15 hallucination, 15 rigid, 15 collapse, 18 edge, 4 white-box)
+* **10 gray-box benchmark traces** with explicit mode/confidence reporting for traces that supply logprobs, relevance scores, and tool-confidence signals
+* **4 white-box benchmark traces** that exercise all attention, KV, gradient, and residual-coherence signal paths at full white-box fidelity (confidence ≥ 0.98)
 * **All 7 REST API endpoints**: session start, step submission, session summary, session list, rolling-window stats, trace graph, and policy evaluation
 * **Per-regime precision, recall, and F1** with a confusion matrix
 * **Score distribution analysis** (C, I, κ, S averages by expected regime)
@@ -249,25 +281,26 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 
 ### Current Results
 
-**Overall accuracy: 96.4% (27/28 correct regime classifications)**
+**Overall accuracy: 98.8% (81/82 correct regime classifications)**
 
 | Regime | Precision | Recall | F1 |
 |--------|-----------|--------|-----|
-| Creative-grounded | 1.00 | 0.90 | 0.95 |
-| Hallucination-risk | 0.83 | 1.00 | 0.91 |
+| Creative-grounded | 1.00 | 0.97 | 0.98 |
+| Hallucination-risk | 0.94 | 1.00 | 0.97 |
 | Rigid | 1.00 | 1.00 | 1.00 |
 | Collapse | 1.00 | 1.00 | 1.00 |
 
 **Interpreting the results:**
 
-- **Rigid detection is now perfect** (F1=1.00). The new structural repetition detector catches template-style outputs ("The X is Y. The X has Z.") that have high lexical diversity but repetitive sentence structure. This fixes the two previously-misclassified rigid scenarios (`rigid-02-template-response` and `rigid-03-over-constrained`).
+- **Rigid detection is perfect** (F1=1.00). The structural repetition detector catches template-style outputs ("The X is Y. The X has Z.") that have high lexical diversity but repetitive sentence structure.
 - **Collapse detection is perfect** (F1=1.00). The κ estimator reliably captures context pressure, latency spikes, and tool failures, and degenerate outputs produce low C and I.
 - **Hallucination-risk recall is perfect** (1.00). Every hallucination scenario is caught. The one false positive (an edge case where creative output lacks any retrieval context) represents a reasonable design choice: flagging ungrounded novelty.
 - **Creative-grounded precision is perfect** (1.00). No false positives — when the system says "creative-grounded", it's always correct.
-- **Gray-box mode** consistently produces higher confidence (dynamic, typically 0.85–0.95 depending on signal coverage) and enables more decisive policy interventions.
+- **Gray-box mode** consistently produces higher confidence (dynamic, typically 0.80–0.95 depending on signal coverage) and enables more decisive policy interventions.
+- **White-box mode** achieves the highest confidence (0.85–0.99 dynamic) by combining layerwise attention entropy, residual-stream coherence, KV norm stress, gradient instability, and all gray-box signals. All four white-box benchmark scenarios are classified correctly.
 
 **Score separation across regimes** confirms that the metrics capture meaningful distinctions:
-- Creative-grounded: high C (0.83), moderate I (0.63), full κ (1.00), highest S (1.46)
+- Creative-grounded: high C (0.84), moderate I (0.63), full κ (1.00)
 - Hallucination-risk: high C (0.85), low I (0.32) — the hallmark signature
 - Rigid: moderate C (0.64), higher I (0.62) — integration dominates distinction
 - Collapse: all scores depressed, especially κ (0.22) — clear capacity failure
