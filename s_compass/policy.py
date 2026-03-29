@@ -29,17 +29,33 @@ def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
     * *collapse* with low κ → reduce retrieval breadth and retry
     * *rigid* → raise temperature to increase novelty
     * Otherwise → no action
+
+    When ``snapshot.confidence`` is high (≥ 0.80, typically from gray-box
+    signals) the policy produces more decisive interventions.  Lower
+    confidence yields softer nudges.
     """
     regime = snapshot.regime
+    high_confidence = snapshot.confidence >= 0.80
 
     if regime == "hallucination-risk":
+        if high_confidence:
+            return PolicyAction(
+                action="require_grounded_regeneration",
+                reason="Integration below threshold; high hallucination risk (high-confidence detection).",
+                parameters={
+                    "temperature": 0.15,
+                    "max_retrieval_chunks": 6,
+                    "citation_mode": "strict",
+                },
+                trace_id=snapshot.trace_id,
+            )
         return PolicyAction(
             action="require_grounded_regeneration",
             reason="Integration below threshold; high hallucination risk.",
             parameters={
-                "temperature": 0.2,
+                "temperature": 0.3,
                 "max_retrieval_chunks": 5,
-                "citation_mode": "strict",
+                "citation_mode": "preferred",
             },
             trace_id=snapshot.trace_id,
         )
@@ -50,7 +66,7 @@ def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
                 action="reduce_load_and_retry",
                 reason="System capacity critically low; reduce retrieval breadth.",
                 parameters={
-                    "max_retrieval_chunks": 3,
+                    "max_retrieval_chunks": 2 if high_confidence else 3,
                     "temperature": 0.3,
                 },
                 trace_id=snapshot.trace_id,
@@ -66,7 +82,7 @@ def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
         return PolicyAction(
             action="increase_temperature",
             reason="Output is repetitive; raising temperature to encourage diversity.",
-            parameters={"temperature": 0.7},
+            parameters={"temperature": 0.8 if high_confidence else 0.7},
             trace_id=snapshot.trace_id,
         )
 

@@ -13,11 +13,12 @@ missing signal.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from .schemas import Claim, GrayBoxSignals, RetrievedChunk, StepInput
+from .extraction import detect_contradictions
 from .estimators import (
     _anti_repetition,
     _claim_novelty,
@@ -111,6 +112,101 @@ def _tool_confidence_aggregate(tool_confidence: Optional[Dict[str, float]]) -> f
     return float(np.clip(sum(vals) / len(vals), 0.0, 1.0))
 
 
+def _contradiction_penalty(claims: List[Claim]) -> float:
+    """Compute a contradiction penalty in [0, 1] from extracted claims.
+
+    Uses :func:`detect_contradictions` to find claim pairs that have high
+    topic overlap but opposite negation polarity.  The penalty is the
+    weighted fraction of claims involved in at least one contradiction,
+    capped at 0.30 to avoid dominating the I score from false positives
+    in the heuristic negation detector.
+
+    Implements the ``- contradiction_penalty`` term from Design-doc §11.
+    """
+    if len(claims) < 2:
+        return 0.0
+    edges = detect_contradictions(claims)
+    if not edges:
+        return 0.0
+    involved = {e.source_id for e in edges} | {e.target_id for e in edges}
+    # Average edge weight captures how strong the overlaps are
+    avg_weight = sum(e.weight for e in edges) / len(edges)
+    raw = (len(involved) / len(claims)) * avg_weight
+    # Cap at 0.30 to prevent false positives from dominating I
+    return min(raw, 0.30)
+
+
+def _tool_path_diversity(tool_calls: List[Dict[str, Any]]) -> float:
+    """Measure diversity of tool-call paths (Design-doc §19.2).
+
+    Higher diversity (more distinct tools used) indicates more creative,
+    multi-source synthesis.  Returns a value in [0, 1].
+    """
+    if not tool_calls:
+        return 0.5  # neutral prior when no tools used
+    names = [tc.get("name", tc.get("tool", "unknown")) for tc in tool_calls]
+    unique = len(set(names))
+    total = len(names)
+    if total <= 1:
+        return 0.5
+    # Normalised diversity: unique/total, but single unique tool = low diversity
+    return float(np.clip(unique / total, 0.0, 1.0))
+
+
+def _retrieval_overload(
+    relevance_scores: Optional[List[float]],
+    retrieval: List[RetrievedChunk],
+) -> float:
+    """Retrieval overload stress signal (Design-doc §19.2).
+
+    High breadth (many chunks) with low mean relevance signals retrieval
+    saturation, adding capacity pressure.  Returns a stress value in [0, 1]
+    where 0 = no overload and 1 = maximal overload.
+    """
+    scores: List[float] = []
+    if relevance_scores:
+        scores = list(relevance_scores)
+    elif retrieval:
+        scores = [c.score for c in retrieval]
+    if not scores:
+        return 0.0  # no retrieval = no overload
+    mean_relevance = sum(scores) / len(scores)
+    low_hit_rate = 1.0 - mean_relevance
+    # Scale by breadth: more chunks with low relevance = more overload
+    breadth_factor = min(len(scores) / 10.0, 1.0)
+    return float(np.clip(low_hit_rate * breadth_factor, 0.0, 1.0))
+
+
+def signal_coverage(gb: Optional[GrayBoxSignals]) -> float:
+    """Fraction of gray-box signal slots that are populated.
+
+    Used by the scoring engine to compute dynamic confidence.  Returns
+    a value in [0, 1] representing the weighted coverage of available
+    gray-box signals.
+    """
+    if gb is None:
+        return 0.0
+    _SIGNAL_WEIGHTS = {
+        "logprobs": 0.30,
+        "token_entropy": 0.20,
+        "relevance_scores": 0.20,
+        "tool_confidence": 0.15,
+        "decoding_instability": 0.15,
+    }
+    present = 0.0
+    if gb.logprobs:
+        present += _SIGNAL_WEIGHTS["logprobs"]
+    if gb.token_entropy:
+        present += _SIGNAL_WEIGHTS["token_entropy"]
+    if gb.relevance_scores:
+        present += _SIGNAL_WEIGHTS["relevance_scores"]
+    if gb.tool_confidence:
+        present += _SIGNAL_WEIGHTS["tool_confidence"]
+    if gb.decoding_instability is not None:
+        present += _SIGNAL_WEIGHTS["decoding_instability"]
+    return present
+
+
 # ---------------------------------------------------------------------------
 # Gray-box C estimator (Design-doc §4.3, §6.2)
 # ---------------------------------------------------------------------------
@@ -121,25 +217,41 @@ def estimate_c_graybox(step: StepInput) -> float:
     Enriches the black-box C estimate with:
     * logprob-derived entropy (replaces token-frequency entropy)
     * token-level uncertainty from provider-supplied entropy
+    * tool-call path diversity (Design-doc §19.2)
+
+    When logprob-based entropy is available it receives higher weight
+    than the black-box fallback components.
     """
     gb: Optional[GrayBoxSignals] = step.gray_box
 
     # Entropy component: prefer logprobs → token_entropy → black-box proxy
+    has_logprob_signal = False
     if gb and gb.logprobs:
         entropy_signal = _logprob_entropy(gb.logprobs)
+        has_logprob_signal = True
     elif gb and gb.token_entropy:
         entropy_signal = _token_uncertainty(gb.token_entropy)
+        has_logprob_signal = True
     else:
         entropy_signal = _token_entropy(step.output_text)
 
-    return normalize(
-        [
-            entropy_signal,
-            _semantic_novelty(step.output_text, step.retrieved_context),
-            _claim_novelty(step.claims, step.citations),
-            _anti_repetition(step.output_text),
-        ]
-    )
+    tool_diversity = _tool_path_diversity(step.tool_calls)
+
+    components = [
+        entropy_signal,
+        _semantic_novelty(step.output_text, step.retrieved_context),
+        _claim_novelty(step.claims, step.citations),
+        _anti_repetition(step.output_text),
+        tool_diversity,
+    ]
+
+    # Give logprob entropy higher weight when available (Design-doc §6.2)
+    if has_logprob_signal:
+        weights = [0.30, 0.20, 0.20, 0.15, 0.15]
+    else:
+        weights = [0.20, 0.20, 0.20, 0.20, 0.20]
+
+    return normalize(components, weights=weights)
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +261,11 @@ def estimate_c_graybox(step: StepInput) -> float:
 def estimate_i_graybox(step: StepInput) -> float:
     """Estimate Integration / coherence (I) using gray-box signals.
 
-    Enriches the black-box I estimate with retriever relevance quality.
+    Enriches the black-box I estimate with:
+    * retriever relevance quality
+    * contradiction penalty (Design-doc §11)
+
+    When explicit relevance scores are available they receive higher weight.
     """
     gb: Optional[GrayBoxSignals] = step.gray_box
 
@@ -158,14 +274,26 @@ def estimate_i_graybox(step: StepInput) -> float:
         step.retrieved_context,
     )
 
-    return normalize(
-        [
-            _citation_coverage(step.claims, step.citations),
-            _support_graph_connectivity(step.claims, step.citations),
-            _cross_turn_consistency(step.output_text, step.history),
-            relevance,
-        ]
-    )
+    has_explicit_relevance = gb is not None and gb.relevance_scores is not None
+
+    # Contradiction penalty (Design-doc §11: I = ... - contradiction_penalty)
+    penalty = _contradiction_penalty(step.claims)
+
+    components = [
+        _citation_coverage(step.claims, step.citations),
+        _support_graph_connectivity(step.claims, step.citations),
+        _cross_turn_consistency(step.output_text, step.history),
+        relevance,
+    ]
+
+    # Give relevance higher weight when explicit scores are available
+    if has_explicit_relevance:
+        weights = [0.25, 0.20, 0.20, 0.35]
+    else:
+        weights = [0.25, 0.25, 0.25, 0.25]
+
+    raw = normalize(components, weights=weights)
+    return float(np.clip(raw - penalty, 0.0, 1.0))
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +307,7 @@ def estimate_kappa_graybox(step: StepInput) -> float:
     * logprob variance as a token-level instability signal
     * tool confidence metrics
     * decoding instability
+    * retrieval overload (Design-doc §19.2)
     """
     gb: Optional[GrayBoxSignals] = step.gray_box
 
@@ -208,14 +337,21 @@ def estimate_kappa_graybox(step: StepInput) -> float:
     tool_uncertainty = 1.0 - tc  # invert: higher uncertainty = more stress
     decoding_stress = gb.decoding_instability if gb and gb.decoding_instability else 0.0
 
+    # Retrieval overload (Design-doc §19.2)
+    ret_overload = _retrieval_overload(
+        gb.relevance_scores if gb else None,
+        step.retrieved_context,
+    )
+
     # Extended σ² with gray-box terms
     sigma_sq = (
-        0.30 * context_load ** 2
-        + 0.20 * latency_cv ** 2
-        + 0.15 * tool_failure_rate ** 2
+        0.25 * context_load ** 2
+        + 0.15 * latency_cv ** 2
+        + 0.10 * tool_failure_rate ** 2
         + 0.15 * lp_instability ** 2
         + 0.10 * tool_uncertainty ** 2
         + 0.10 * decoding_stress ** 2
+        + 0.15 * ret_overload ** 2
     )
     beta = 5.0
     return 1.0 / (1.0 + beta * sigma_sq)

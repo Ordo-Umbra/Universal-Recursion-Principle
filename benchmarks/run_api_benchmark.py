@@ -18,7 +18,7 @@ The script:
 5. Retrieves session summaries and rolling-window stats via the GET endpoints.
 6. Compares computed regimes against human-labelled expected regimes.
 7. Emits a Markdown report with per-scenario detail, confusion matrix,
-   accuracy metrics, and aggregate statistics.
+   accuracy metrics, aggregate statistics, and gray-box coverage.
 """
 
 from __future__ import annotations
@@ -113,6 +113,10 @@ def run_benchmark() -> Dict[str, Any]:
                     step_body["capacity"] = scenario["capacity"]
                 if "history" in scenario:
                     step_body["history"] = scenario["history"]
+                if "gray_box_signals" in scenario:
+                    step_body["gray_box_signals"] = scenario["gray_box_signals"]
+                if "mode" in scenario:
+                    step_body["mode"] = scenario["mode"]
 
                 step_resp = _post_json(client, "/v1/step", step_body)
                 assert step_resp["status"] == 200, (
@@ -128,6 +132,8 @@ def run_benchmark() -> Dict[str, Any]:
                     "match": data["regime"] == scenario["expected_regime"],
                     "scores": data["scores"],
                     "policy": data["policy"],
+                    "mode": data["mode"],
+                    "confidence": data["confidence"],
                     "prompt_preview": scenario["prompt"][:80],
                     "output_preview": scenario["output"]["text"][:120],
                 })
@@ -225,6 +231,14 @@ def generate_report(results: Dict[str, Any], out: TextIO = sys.stdout) -> None:
     w("# S Compass API Benchmark Report\n\n")
     w(f"**Generated:** {results['timestamp']}\n\n")
     w(f"**Corpus size:** {results['corpus_size']} scenarios\n\n")
+    mode_counts = defaultdict(int)
+    for scenario in scenarios:
+        mode_counts[scenario["mode"]] += 1
+    if mode_counts:
+        modes = ", ".join(
+            f"{mode}={count}" for mode, count in sorted(mode_counts.items())
+        )
+        w(f"**Modes exercised:** {modes}\n\n")
     w(f"**Overall regime accuracy:** {correct}/{total} "
       f"({accuracy:.1%})\n\n")
 
@@ -274,6 +288,7 @@ def generate_report(results: Dict[str, Any], out: TextIO = sys.stdout) -> None:
         w(f"- **Output preview:** {s['output_preview']}...\n")
         w(f"- **Expected regime:** `{s['expected_regime']}`\n")
         w(f"- **Computed regime:** `{s['computed_regime']}`\n")
+        w(f"- **Mode:** `{s['mode']}` (confidence={s['confidence']:.2f})\n")
         w(f"- **Scores:** C={s['scores']['c']:.4f}, "
           f"I={s['scores']['i']:.4f}, "
           f"κ={s['scores']['kappa']:.4f}, "

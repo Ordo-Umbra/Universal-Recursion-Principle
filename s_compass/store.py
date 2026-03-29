@@ -155,15 +155,20 @@ class EvaluationStore:
                 "step_count": 0,
                 "regime_counts": {},
                 "avg_scores": {},
+                "mode_counts": {},
+                "avg_confidence": None,
             }
         regime_counts: Dict[str, int] = {}
-        c_vals, i_vals, k_vals, s_vals = [], [], [], []
+        mode_counts: Dict[str, int] = {}
+        c_vals, i_vals, k_vals, s_vals, conf_vals = [], [], [], [], []
         for snap in rec.scores:
             regime_counts[snap.regime] = regime_counts.get(snap.regime, 0) + 1
+            mode_counts[snap.mode] = mode_counts.get(snap.mode, 0) + 1
             c_vals.append(snap.c)
             i_vals.append(snap.i)
             k_vals.append(snap.kappa)
             s_vals.append(snap.s)
+            conf_vals.append(snap.confidence)
         n = len(rec.scores)
         return {
             "session_id": session_id,
@@ -175,4 +180,6 @@ class EvaluationStore:
                 "kappa": round(sum(k_vals) / n, 4),
                 "s": round(sum(s_vals) / n, 4),
             },
+            "mode_counts": mode_counts,
+            "avg_confidence": round(sum(conf_vals) / n, 4),
         }
