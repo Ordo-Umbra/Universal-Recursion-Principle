@@ -25,7 +25,9 @@ from .estimators import (
     _citation_coverage,
     _cosine_token_similarity,
     _cross_turn_consistency,
+    _retrieval_echo_novelty,
     _semantic_novelty,
+    _sentence_structure_novelty,
     _support_graph_connectivity,
     _token_entropy,
     capacity_field,
@@ -218,6 +220,8 @@ def estimate_c_graybox(step: StepInput) -> float:
     * logprob-derived entropy (replaces token-frequency entropy)
     * token-level uncertainty from provider-supplied entropy
     * tool-call path diversity (Design-doc §19.2)
+    * sentence-level structural novelty
+    * retrieval-echo novelty
 
     When logprob-based entropy is available it receives higher weight
     than the black-box fallback components.
@@ -243,13 +247,15 @@ def estimate_c_graybox(step: StepInput) -> float:
         _claim_novelty(step.claims, step.citations),
         _anti_repetition(step.output_text),
         tool_diversity,
+        _sentence_structure_novelty(step.output_text),
+        _retrieval_echo_novelty(step.output_text, step.retrieved_context),
     ]
 
     # Give logprob entropy higher weight when available (Design-doc §6.2)
     if has_logprob_signal:
-        weights = [0.30, 0.20, 0.20, 0.15, 0.15]
+        weights = [0.22, 0.10, 0.10, 0.10, 0.10, 0.19, 0.19]
     else:
-        weights = [0.20, 0.20, 0.20, 0.20, 0.20]
+        weights = [0.14, 0.10, 0.10, 0.14, 0.10, 0.21, 0.21]
 
     return normalize(components, weights=weights)
 

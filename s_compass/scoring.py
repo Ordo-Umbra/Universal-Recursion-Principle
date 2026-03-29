@@ -12,7 +12,12 @@ from __future__ import annotations
 from typing import Dict
 
 from .schemas import ScoreSnapshot, StepInput
-from .estimators import estimate_c, estimate_i, estimate_kappa
+from .estimators import (
+    _sentence_structure_novelty,
+    estimate_c,
+    estimate_i,
+    estimate_kappa,
+)
 from .estimators_graybox import (
     estimate_c_graybox,
     estimate_i_graybox,
@@ -31,9 +36,15 @@ _I_HIGH = 0.55
 _I_LOW = 0.35
 _K_LOW = 0.45
 _K_CRITICAL = 0.25
+_STRUCT_NOV_LOW = 0.40
 
 
-def classify_regime(c: float, i: float, kappa: float) -> str:
+def classify_regime(
+    c: float,
+    i: float,
+    kappa: float,
+    structural_novelty: float = 1.0,
+) -> str:
     """Assign a behavioural regime label (Design-doc §12).
 
     Returns one of:
@@ -42,6 +53,16 @@ def classify_regime(c: float, i: float, kappa: float) -> str:
     * ``"creative-grounded"`` — high C, moderate-or-high I, moderate-or-high κ
     * ``"hallucination-risk"`` — high C, low I, low or unstable κ
     * ``"collapse"`` — low C, low I, low κ
+
+    Parameters
+    ----------
+    structural_novelty:
+        Optional sentence-level structural novelty score in [0, 1].
+        When provided (by :func:`score_step`), enables detection of
+        template-rigid outputs that have high lexical diversity but
+        repetitive sentence structure.  Defaults to 1.0 (fully novel)
+        when called without text analysis (e.g. from the policy
+        evaluation endpoint with pre-computed scores).
     """
     if c <= _C_LOW and i <= _I_LOW and kappa < _K_LOW:
         return "collapse"
@@ -54,6 +75,12 @@ def classify_regime(c: float, i: float, kappa: float) -> str:
     # The i - c >= 0.10 heuristic captures outputs that echo retrieval
     # context closely, producing high citation coverage but little novelty.
     if (c < _C_HIGH or i - c >= 0.10) and i >= _I_HIGH and kappa >= _K_LOW:
+        return "rigid"
+    # Template-rigid: structurally repetitive text (e.g. "The X is Y.
+    # The X has Z.") with at least moderate integration.  This catches
+    # outputs with high lexical diversity but formulaic sentence patterns
+    # that the score-only rigid check above misses.
+    if structural_novelty < _STRUCT_NOV_LOW and i >= _I_LOW and kappa >= _K_LOW:
         return "rigid"
     if c >= _C_HIGH and i >= _I_LOW:
         return "creative-grounded"
@@ -93,8 +120,11 @@ def score_step(step: StepInput) -> ScoreSnapshot:
         kappa = estimate_kappa(step)
         confidence = 0.65
 
+    # Compute structural novelty for template-rigid detection
+    structural_novelty = _sentence_structure_novelty(step.output_text)
+
     s = c + kappa * i  # core URP formula
-    regime = classify_regime(c, i, kappa)
+    regime = classify_regime(c, i, kappa, structural_novelty=structural_novelty)
     return ScoreSnapshot(
         c=round(c, 4),
         i=round(i, 4),
