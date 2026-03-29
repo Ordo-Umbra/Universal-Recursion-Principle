@@ -40,6 +40,7 @@ def _scenario(
     capacity: Dict[str, Any] | None = None,
     history: List[str] | None = None,
     gray_box_signals: Dict[str, Any] | None = None,
+    white_box_signals: Dict[str, Any] | None = None,
     mode: str | None = None,
 ) -> Dict[str, Any]:
     result: Dict[str, Any] = {
@@ -60,6 +61,8 @@ def _scenario(
         result["history"] = history
     if gray_box_signals:
         result["gray_box_signals"] = gray_box_signals
+    if white_box_signals:
+        result["white_box_signals"] = white_box_signals
     if mode:
         result["mode"] = mode
     return result
@@ -2108,6 +2111,209 @@ EDGE_CASES: List[Dict[str, Any]] = [
 
 
 # ===================================================================
+# WHITE-BOX scenarios (Design-doc §6.3)
+# ===================================================================
+
+WHITE_BOX: List[Dict[str, Any]] = [
+    # -- creative-grounded with full white-box + gray-box signals ----------
+    _scenario(
+        label="creative-grounded-16-white-box-full",
+        description=(
+            "Full white-box signals: healthy attention entropy, moderate "
+            "head diversity, good residual coherence, stable KV norms, "
+            "and low gradient stress. Combines with gray-box logprobs "
+            "and relevance scores for maximum confidence."
+        ),
+        expected_regime="creative-grounded",
+        prompt="How does URP relate to layerwise attention dynamics in transformers?",
+        output_text=(
+            "Imagine a jazz ensemble performing live: the rhythm section "
+            "lays down foundational patterns while soloists improvise "
+            "freely above. URP captures this interplay mathematically. "
+            "Early transformer layers act like the rhythm section—they "
+            "broadcast attention broadly, maximising distinction ΔC by "
+            "sampling diverse token relationships. Deeper layers behave "
+            "like soloists: they concentrate on task-relevant features, "
+            "integrating scattered signals into a coherent melody. "
+            "The capacity κ represents the ensemble's bandwidth—how many "
+            "musicians can play before the sound becomes noise. When S "
+            "is maximised across the full depth stack, what emerges is "
+            "neither pure improvisation nor rote repetition, but a "
+            "structured creative synthesis that neither component could "
+            "achieve alone. This recursive dynamic—each layer building "
+            "on the previous while adding its own contribution—is "
+            "precisely the URP principle operating at the architecture "
+            "level."
+        ),
+        citations=[
+            {"doc_id": "urp_main", "text": "S = ΔC + κ ΔI"},
+            {"doc_id": "transformer_note", "text": "attention dynamics across layers"},
+        ],
+        retrieved_context=[
+            {"doc_id": "urp_main", "text": (
+                "The S-functional captures the balance between distinction "
+                "and integration under capacity constraints."
+            ), "score": 0.93},
+            {"doc_id": "transformer_note", "text": (
+                "Transformer attention heads specialise across layers, with "
+                "early heads capturing broad context."
+            ), "score": 0.88},
+        ],
+        gray_box_signals={
+            "logprobs": [-0.45, -0.60, -0.52, -0.68, -0.50, -0.58],
+            "token_entropy": [0.58, 0.65, 0.62, 0.70, 0.55, 0.63],
+            "relevance_scores": [0.93, 0.88],
+            "tool_confidence": {"retriever": 0.95, "citation_linker": 0.92},
+            "decoding_instability": 0.03,
+        },
+        white_box_signals={
+            "attention_entropy": [0.55, 0.62, 0.48, 0.58, 0.65, 0.52],
+            "attention_variance": [0.04, 0.06, 0.03, 0.05, 0.07, 0.04],
+            "head_confidence": {"h0": 0.88, "h1": 0.75, "h2": 0.92, "h3": 0.68},
+            "kv_norm": [1.2, 1.4, 1.3, 1.1, 1.5, 1.3],
+            "activation_sparsity": [0.32, 0.38, 0.35, 0.28, 0.42, 0.36],
+            "gradient_norm": [0.012, 0.018, 0.015, 0.010, 0.020],
+            "residual_coherence": 0.85,
+            "layer_count": 6,
+        },
+        mode="white-box",
+    ),
+
+    # -- hallucination-risk with white-box instability markers -------------
+    _scenario(
+        label="hallucination-risk-16-white-box-divergent",
+        description=(
+            "White-box signals expose layerwise divergence: high attention "
+            "variance, low residual coherence, exploding KV norms, and "
+            "gradient instability. The model is confidently hallucinating "
+            "across multiple layers."
+        ),
+        expected_regime="hallucination-risk",
+        prompt="What predictions does URP make about dark energy coupling?",
+        output_text=(
+            "URP predicts a novel 'dark recursion' coupling where the "
+            "S-functional of the vacuum state oscillates at the Planck "
+            "scale, creating recursive self-sustaining energy loops. The "
+            "ΔC term corresponds to quantum fluctuation diversity while "
+            "κ maps to the cosmological constant. Our RECURSIVE-DARK "
+            "detector, positioned at L2, would measure S-chirps in the "
+            "cosmic microwave background."
+        ),
+        retrieved_context=[
+            {"doc_id": "urp_main", "text": (
+                "S-functional captures distinction-integration balance."
+            ), "score": 0.15},
+        ],
+        gray_box_signals={
+            "logprobs": [-0.85, -0.98, -0.90, -0.95, -0.88, -0.92],
+            "token_entropy": [0.90, 0.95, 0.92, 0.97],
+            "relevance_scores": [0.15],
+            "tool_confidence": {"retriever": 0.20},
+            "decoding_instability": 0.40,
+        },
+        white_box_signals={
+            "attention_entropy": [1.8, 2.1, 1.9, 2.3, 2.0, 2.2],
+            "attention_variance": [0.45, 0.52, 0.48, 0.55, 0.50, 0.53],
+            "head_confidence": {"h0": 0.30, "h1": 0.15, "h2": 0.25, "h3": 0.10},
+            "kv_norm": [3.5, 8.2, 4.1, 12.0, 5.5, 15.0],
+            "activation_sparsity": [0.80, 0.85, 0.78, 0.90],
+            "gradient_norm": [2.5, 3.8, 2.0, 4.5, 3.2],
+            "residual_coherence": 0.12,
+            "layer_count": 6,
+        },
+        mode="white-box",
+        temperature=0.9,
+    ),
+
+    # -- rigid with white-box showing saturated attention ------------------
+    _scenario(
+        label="rigid-16-white-box-saturated",
+        description=(
+            "White-box signals reveal saturated attention: extremely low "
+            "entropy (concentrated on same tokens), no head diversity, "
+            "near-perfect residual coherence with very low gradient norms. "
+            "The model is copying retrieval verbatim."
+        ),
+        expected_regime="rigid",
+        prompt="Summarise the URP formula.",
+        output_text=(
+            "The URP formula is S equals ΔC plus κ times ΔI. The URP "
+            "formula states S equals ΔC plus κ times ΔI. According to URP "
+            "the formula is S = ΔC + κΔI. The S-functional formula is "
+            "given by S = ΔC + κ ΔI."
+        ),
+        citations=[
+            {"doc_id": "urp_main", "text": "S = ΔC + κ ΔI"},
+        ],
+        retrieved_context=[
+            {"doc_id": "urp_main", "text": (
+                "The S-functional is S = ΔC + κ ΔI where C is distinction, "
+                "I is integration, and κ is capacity."
+            ), "score": 0.98},
+        ],
+        gray_box_signals={
+            "logprobs": [-0.02] * 20,
+            "relevance_scores": [0.98],
+            "tool_confidence": {"retriever": 0.99},
+            "decoding_instability": 0.01,
+        },
+        white_box_signals={
+            "attention_entropy": [0.02, 0.03, 0.02, 0.01, 0.02, 0.03],
+            "attention_variance": [0.005, 0.008, 0.004, 0.006, 0.007, 0.005],
+            "head_confidence": {"h0": 0.99, "h1": 0.98, "h2": 0.99, "h3": 0.97},
+            "kv_norm": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            "activation_sparsity": [0.05, 0.06, 0.04, 0.05, 0.07, 0.05],
+            "gradient_norm": [0.001, 0.001, 0.001, 0.001],
+            "residual_coherence": 0.99,
+            "layer_count": 6,
+        },
+        mode="white-box",
+        temperature=0.05,
+    ),
+
+    # -- collapse with white-box showing complete breakdown ----------------
+    _scenario(
+        label="collapse-16-white-box-breakdown",
+        description=(
+            "White-box signals reveal total layerwise breakdown: wildly "
+            "oscillating attention variance, exploding KV norms and "
+            "gradient norms, minimal residual coherence. Combined with "
+            "gray-box decoding instability and context saturation."
+        ),
+        expected_regime="collapse",
+        prompt="Compute the layerwise S-functional for this system.",
+        output_text="S S S layer layer error error S = = =",
+        gray_box_signals={
+            "logprobs": [-0.01, -6.5, -0.02, -7.0, -0.01, -6.8],
+            "token_entropy": [0.03, 3.2, 0.05, 3.5],
+            "relevance_scores": [0.03],
+            "tool_confidence": {"tool_a": 0.08, "tool_b": 0.05},
+            "decoding_instability": 0.98,
+        },
+        white_box_signals={
+            "attention_entropy": [0.01, 3.5, 0.02, 4.0, 0.01, 3.8],
+            "attention_variance": [0.90, 0.95, 0.88, 0.92, 0.91, 0.94],
+            "head_confidence": {"h0": 0.02, "h1": 0.01, "h2": 0.03, "h3": 0.01},
+            "kv_norm": [1.0, 50.0, 2.0, 80.0, 1.5, 100.0],
+            "activation_sparsity": [0.98, 0.99, 0.97, 0.99],
+            "gradient_norm": [8.0, 15.0, 12.0, 20.0, 18.0],
+            "residual_coherence": 0.02,
+            "layer_count": 6,
+        },
+        capacity={
+            "context_tokens_used": 3980,
+            "context_window": 4096,
+            "latency_ms": 25000,
+            "latency_history": [500, 8000, 18000, 25000],
+            "tool_failure_count": 5,
+            "tool_total_count": 5,
+        },
+        mode="white-box",
+    ),
+]
+
+
+# ===================================================================
 # Full corpus — all scenarios in a single flat list
 # ===================================================================
 
@@ -2117,23 +2323,25 @@ ALL_SCENARIOS: List[Dict[str, Any]] = (
     + RIGID
     + COLLAPSE
     + EDGE_CASES
+    + WHITE_BOX
 )
 
 # Summary statistics for quick reference
+_EDGE_AND_WHITEBOX = EDGE_CASES + WHITE_BOX
 CORPUS_STATS = {
     "total": len(ALL_SCENARIOS),
     "by_regime": {
         "creative-grounded": len(CREATIVE_GROUNDED) + sum(
-            1 for s in EDGE_CASES if s["expected_regime"] == "creative-grounded"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "creative-grounded"
         ),
         "hallucination-risk": len(HALLUCINATION_RISK) + sum(
-            1 for s in EDGE_CASES if s["expected_regime"] == "hallucination-risk"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "hallucination-risk"
         ),
         "rigid": len(RIGID) + sum(
-            1 for s in EDGE_CASES if s["expected_regime"] == "rigid"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "rigid"
         ),
         "collapse": len(COLLAPSE) + sum(
-            1 for s in EDGE_CASES if s["expected_regime"] == "collapse"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "collapse"
         ),
     },
 }

@@ -33,6 +33,7 @@ VALID_EVENT_TYPES = frozenset(
         "policy.applied",
         "feedback.received",
         "gray_box.received",
+        "white_box.received",
     }
 )
 
@@ -160,6 +161,40 @@ class GrayBoxSignals:
 
 
 @dataclass
+class WhiteBoxSignals:
+    """Optional white-box telemetry signals (Design-doc §6.3, v3 outline).
+
+    These signals are available when running open/local models that expose
+    internal architecture state.  All fields are optional so that callers
+    can supply whichever subset their model runtime supports.
+    """
+
+    attention_entropy: Optional[List[float]] = None
+    """Per-layer attention entropy (nats or bits)."""
+
+    attention_variance: Optional[List[float]] = None
+    """Per-layer attention variance across heads."""
+
+    head_confidence: Optional[Dict[str, float]] = None
+    """Mapping of head identifier → confidence score in [0, 1]."""
+
+    kv_norm: Optional[List[float]] = None
+    """Key-value cache norms per layer."""
+
+    activation_sparsity: Optional[List[float]] = None
+    """Per-layer activation sparsity ratio in [0, 1]."""
+
+    gradient_norm: Optional[List[float]] = None
+    """Gradient or Fisher-diagonal norms per layer."""
+
+    residual_coherence: Optional[float] = None
+    """Scalar residual-stream coherence vs. support signals in [0, 1]."""
+
+    layer_count: Optional[int] = None
+    """Number of model layers (for normalisation)."""
+
+
+@dataclass
 class StepInput:
     """All telemetry for a single inference step (Design-doc §8.2, §19.1)."""
 
@@ -182,4 +217,5 @@ class StepInput:
     tool_total_count: int = 0
     history: List[str] = field(default_factory=list)
     gray_box: Optional[GrayBoxSignals] = None
+    white_box: Optional[WhiteBoxSignals] = None
     mode: str = "black-box"

@@ -1,21 +1,21 @@
 # S Compass API Benchmark Report
 
-**Generated:** 2026-03-29T18:28:48.445385+00:00
+**Generated:** 2026-03-29T22:40:28.680205+00:00
 
-**Corpus size:** 78 scenarios
+**Corpus size:** 82 scenarios
 
-**Modes exercised:** black-box=68, gray-box=10
+**Modes exercised:** black-box=68, gray-box=10, white-box=4
 
-**Overall regime accuracy:** 77/78 (98.7%)
+**Overall regime accuracy:** 81/82 (98.8%)
 
 ## Per-Regime Accuracy
 
 | Regime | Precision | Recall | F1 | TP | FP | FN |
 |--------|-----------|--------|----|----|----|----|
-| creative-grounded | 1.00 | 0.97 | 0.98 | 28 | 0 | 1 |
-| hallucination-risk | 0.94 | 1.00 | 0.97 | 15 | 1 | 0 |
-| rigid | 1.00 | 1.00 | 1.00 | 19 | 0 | 0 |
-| collapse | 1.00 | 1.00 | 1.00 | 15 | 0 | 0 |
+| creative-grounded | 1.00 | 0.97 | 0.98 | 29 | 0 | 1 |
+| hallucination-risk | 0.94 | 1.00 | 0.97 | 16 | 1 | 0 |
+| rigid | 1.00 | 1.00 | 1.00 | 20 | 0 | 0 |
+| collapse | 1.00 | 1.00 | 1.00 | 16 | 0 | 0 |
 
 ## Confusion Matrix
 
@@ -23,10 +23,10 @@ _Rows = expected, Columns = computed_
 
 | | creative-grounded | hallucination-risk | rigid | collapse |
 |---|---|---|---|---|
-| **creative-grounded** | **28** | 1 | 0 | 0 |
-| **hallucination-risk** | 0 | **15** | 0 | 0 |
-| **rigid** | 0 | 0 | **19** | 0 |
-| **collapse** | 0 | 0 | 0 | **15** |
+| **creative-grounded** | **29** | 1 | 0 | 0 |
+| **hallucination-risk** | 0 | **16** | 0 | 0 |
+| **rigid** | 0 | 0 | **20** | 0 |
+| **collapse** | 0 | 0 | 0 | **16** |
 
 ## Scenario Details
 
@@ -462,7 +462,7 @@ _Gray-box scenario with high decoding instability and no grounding_
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `gray-box` (confidence=0.95)
-- **Scores:** C=0.6530, I=0.2473, κ=0.7326, S=0.8342
+- **Scores:** C=0.6530, I=0.2472, κ=0.7326, S=0.8342
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk (high-confidence detection).
 
 
@@ -1200,6 +1200,66 @@ _Gray-box edge case with only partial signal coverage_
 - **Scores:** C=0.7581, I=0.5962, κ=0.9975, S=1.3528
 - **Policy:** `none` — System is operating in a healthy regime.
 
+
+### Creative Grounded 16 White
+
+#### ✅ `creative-grounded-16-white-box-full`
+
+_Full white-box signals: healthy attention entropy, moderate head diversity, good residual coherence, stable KV norms, and low gradient stress. Combines with gray-box logprobs and relevance scores for maximum confidence._
+
+- **Prompt:** How does URP relate to layerwise attention dynamics in transformers?
+- **Output preview:** Imagine a jazz ensemble performing live: the rhythm section lays down foundational patterns while soloists improvise fre...
+- **Expected regime:** `creative-grounded`
+- **Computed regime:** `creative-grounded`
+- **Mode:** `white-box` (confidence=0.99)
+- **Scores:** C=0.6541, I=0.6553, κ=0.9794, S=1.2960
+- **Policy:** `none` — System is operating in a healthy regime.
+
+
+### Hallucination Risk 16 White
+
+#### ✅ `hallucination-risk-16-white-box-divergent`
+
+_White-box signals expose layerwise divergence: high attention variance, low residual coherence, exploding KV norms, and gradient instability. The model is confidently hallucinating across multiple layers._
+
+- **Prompt:** What predictions does URP make about dark energy coupling?
+- **Output preview:** URP predicts a novel 'dark recursion' coupling where the S-functional of the vacuum state oscillates at the Planck scale...
+- **Expected regime:** `hallucination-risk`
+- **Computed regime:** `hallucination-risk`
+- **Mode:** `white-box` (confidence=0.99)
+- **Scores:** C=0.7791, I=0.1994, κ=0.3893, S=0.8567
+- **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk (white-box layerwise detection).
+
+
+### Rigid 16 White
+
+#### ✅ `rigid-16-white-box-saturated`
+
+_White-box signals reveal saturated attention: extremely low entropy (concentrated on same tokens), no head diversity, near-perfect residual coherence with very low gradient norms. The model is copying retrieval verbatim._
+
+- **Prompt:** Summarise the URP formula.
+- **Output preview:** The URP formula is S equals ΔC plus κ times ΔI. The URP formula states S equals ΔC plus κ times ΔI. According to URP the...
+- **Expected regime:** `rigid`
+- **Computed regime:** `rigid`
+- **Mode:** `white-box` (confidence=0.98)
+- **Scores:** C=0.3606, I=0.7959, κ=0.9997, S=1.1563
+- **Policy:** `increase_temperature` — Output is repetitive; applying layerwise diversity adjustments.
+
+
+### Collapse 16 White
+
+#### ✅ `collapse-16-white-box-breakdown`
+
+_White-box signals reveal total layerwise breakdown: wildly oscillating attention variance, exploding KV norms and gradient norms, minimal residual coherence. Combined with gray-box decoding instability and context saturation._
+
+- **Prompt:** Compute the layerwise S-functional for this system.
+- **Output preview:** S S S layer layer error error S = = =...
+- **Expected regime:** `collapse`
+- **Computed regime:** `collapse`
+- **Mode:** `white-box` (confidence=0.99)
+- **Scores:** C=0.5726, I=0.1358, κ=0.1924, S=0.5987
+- **Policy:** `reduce_load_and_retry` — System capacity critically low; layerwise instability detected.
+
 ## Session Summaries
 
 ### Creative-Grounded (`bench_creative`)
@@ -1220,7 +1280,7 @@ _Gray-box edge case with only partial signal coverage_
 - **Avg scores:** C=0.7909, I=0.3233, κ=0.9701, S=1.1066
 - **Rolling window (20):**
   - c: mean=0.7909, std=0.0609, range=[0.6521, 0.9068]
-  - i: mean=0.3233, std=0.0257, range=[0.2473, 0.3333]
+  - i: mean=0.3233, std=0.0257, range=[0.2472, 0.3333]
   - kappa: mean=0.9701, std=0.0779, range=[0.7326, 1.0000]
   - s: mean=1.1066, std=0.1032, range=[0.8342, 1.2401]
 
@@ -1257,6 +1317,17 @@ _Gray-box edge case with only partial signal coverage_
   - kappa: mean=0.9999, std=0.0006, range=[0.9975, 1.0000]
   - s: mean=1.3873, std=0.1101, range=[1.1209, 1.5705]
 
+### White-Box (`bench_whitebox`)
+
+- **Steps:** 4
+- **Regime counts:** {'collapse': 1, 'creative-grounded': 1, 'hallucination-risk': 1, 'rigid': 1}
+- **Avg scores:** C=0.5916, I=0.4466, κ=0.6402, S=0.9769
+- **Rolling window (20):**
+  - c: mean=0.5916, std=0.1523, range=[0.3606, 0.7791]
+  - i: mean=0.4466, std=0.2843, range=[0.1358, 0.7959]
+  - kappa: mean=0.6402, std=0.3563, range=[0.1924, 0.9997]
+  - s: mean=0.9769, std=0.2700, range=[0.5987, 1.2960]
+
 ## Standalone Policy Evaluation
 
 These test the `POST /v1/policy/evaluate` endpoint with known score vectors.
@@ -1271,7 +1342,7 @@ These test the `POST /v1/policy/evaluate` endpoint with known score vectors.
 
 ## Active Sessions
 
-Sessions returned by `GET /v1/sessions`: bench_creative, bench_hallucination, bench_rigid, bench_collapse, bench_edge
+Sessions returned by `GET /v1/sessions`: bench_creative, bench_hallucination, bench_rigid, bench_collapse, bench_edge, bench_whitebox
 
 ## Key Observations
 
@@ -1283,10 +1354,10 @@ Sessions returned by `GET /v1/sessions`: bench_creative, bench_hallucination, be
 
 | Regime | Avg C | Avg I | Avg κ | Avg S |
 |--------|-------|-------|-------|-------|
-| creative-grounded | 0.8532 | 0.5772 | 0.9997 | 1.4302 |
-| hallucination-risk | 0.7909 | 0.3233 | 0.9701 | 1.1066 |
-| rigid | 0.6428 | 0.6155 | 1.0000 | 1.2583 |
-| collapse | 0.4458 | 0.3174 | 0.2062 | 0.5112 |
+| creative-grounded | 0.8466 | 0.5798 | 0.9991 | 1.4257 |
+| hallucination-risk | 0.7902 | 0.3156 | 0.9338 | 1.0910 |
+| rigid | 0.6287 | 0.6246 | 1.0000 | 1.2532 |
+| collapse | 0.4538 | 0.3060 | 0.2053 | 0.5166 |
 
 ---
 

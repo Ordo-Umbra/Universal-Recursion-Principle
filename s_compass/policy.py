@@ -31,13 +31,31 @@ def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
     * Otherwise → no action
 
     When ``snapshot.confidence`` is high (≥ 0.80, typically from gray-box
-    signals) the policy produces more decisive interventions.  Lower
-    confidence yields softer nudges.
+    or white-box signals) the policy produces more decisive interventions.
+    Lower confidence yields softer nudges.
+
+    In white-box mode (``snapshot.mode == "white-box"``), policy hooks can
+    recommend layer-targeted interventions such as head dropout or routing
+    to safer model variants (Design-doc §6.3 v3 outline).
     """
     regime = snapshot.regime
     high_confidence = snapshot.confidence >= 0.80
+    is_white_box = snapshot.mode == "white-box"
 
     if regime == "hallucination-risk":
+        if is_white_box and high_confidence:
+            return PolicyAction(
+                action="require_grounded_regeneration",
+                reason="Integration below threshold; high hallucination risk (white-box layerwise detection).",
+                parameters={
+                    "temperature": 0.10,
+                    "max_retrieval_chunks": 6,
+                    "citation_mode": "strict",
+                    "head_dropout": 0.05,
+                    "route_to_safer_variant": True,
+                },
+                trace_id=snapshot.trace_id,
+            )
         if high_confidence:
             return PolicyAction(
                 action="require_grounded_regeneration",
@@ -62,6 +80,18 @@ def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
 
     if regime == "collapse":
         if snapshot.kappa < _K_OVERLOAD_THRESHOLD:
+            if is_white_box and high_confidence:
+                return PolicyAction(
+                    action="reduce_load_and_retry",
+                    reason="System capacity critically low; layerwise instability detected.",
+                    parameters={
+                        "max_retrieval_chunks": 2,
+                        "temperature": 0.3,
+                        "head_dropout": 0.10,
+                        "route_to_safer_variant": True,
+                    },
+                    trace_id=snapshot.trace_id,
+                )
             return PolicyAction(
                 action="reduce_load_and_retry",
                 reason="System capacity critically low; reduce retrieval breadth.",
@@ -79,6 +109,16 @@ def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
         )
 
     if regime == "rigid":
+        if is_white_box and high_confidence:
+            return PolicyAction(
+                action="increase_temperature",
+                reason="Output is repetitive; applying layerwise diversity adjustments.",
+                parameters={
+                    "temperature": 0.85,
+                    "rep_pen_adjustment": 0.10,
+                },
+                trace_id=snapshot.trace_id,
+            )
         return PolicyAction(
             action="increase_temperature",
             reason="Output is repetitive; raising temperature to encourage diversity.",

@@ -12,13 +12,15 @@ Usage::
 The script:
 
 1. Boots the Flask app via ``create_app()``.
-2. Creates one session per regime group + one for edge cases.
+2. Creates one session per regime group + one each for edge cases and
+   white-box scenarios.
 3. Submits every scenario through ``POST /v1/step``.
 4. Collects scores, regimes, policy actions, and coherence graphs.
 5. Retrieves session summaries and rolling-window stats via the GET endpoints.
 6. Compares computed regimes against human-labelled expected regimes.
 7. Emits a Markdown report with per-scenario detail, confusion matrix,
-   accuracy metrics, aggregate statistics, and gray-box coverage.
+   accuracy metrics, aggregate statistics, gray-box coverage, and
+   white-box coverage.
 """
 
 from __future__ import annotations
@@ -41,6 +43,7 @@ from .corpus import (
     EDGE_CASES,
     HALLUCINATION_RISK,
     RIGID,
+    WHITE_BOX,
 )
 
 
@@ -56,6 +59,7 @@ SESSION_GROUPS: List[Tuple[str, str, List[Dict[str, Any]]]] = [
     ("bench_rigid", "Rigid", RIGID),
     ("bench_collapse", "Collapse", COLLAPSE),
     ("bench_edge", "Edge Cases", EDGE_CASES),
+    ("bench_whitebox", "White-Box", WHITE_BOX),
 ]
 
 
@@ -115,6 +119,8 @@ def run_benchmark() -> Dict[str, Any]:
                     step_body["history"] = scenario["history"]
                 if "gray_box_signals" in scenario:
                     step_body["gray_box_signals"] = scenario["gray_box_signals"]
+                if "white_box_signals" in scenario:
+                    step_body["white_box_signals"] = scenario["white_box_signals"]
                 if "mode" in scenario:
                     step_body["mode"] = scenario["mode"]
 

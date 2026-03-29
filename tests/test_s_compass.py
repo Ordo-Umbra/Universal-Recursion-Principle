@@ -102,7 +102,8 @@ class TestTelemetry:
         assert "session.started" in VALID_EVENT_TYPES
         assert "model.completed" in VALID_EVENT_TYPES
         assert "gray_box.received" in VALID_EVENT_TYPES
-        assert len(VALID_EVENT_TYPES) == 12
+        assert "white_box.received" in VALID_EVENT_TYPES
+        assert len(VALID_EVENT_TYPES) == 13
 
     def test_normalize_step_payload(self):
         raw = {
