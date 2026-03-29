@@ -32,6 +32,7 @@ VALID_EVENT_TYPES = frozenset(
         "policy.recommended",
         "policy.applied",
         "feedback.received",
+        "gray_box.received",
     }
 )
 
@@ -103,6 +104,7 @@ class ScoreSnapshot:
     regime: str
     trace_id: Optional[str] = None
     confidence: float = 1.0
+    mode: str = "black-box"
 
 
 @dataclass

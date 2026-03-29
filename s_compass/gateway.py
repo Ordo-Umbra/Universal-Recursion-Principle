@@ -121,6 +121,32 @@ class SCompassGateway:
         if step.gray_box is not None and step.mode == "black-box":
             step.mode = "gray-box"
 
+        # Emit gray_box.received telemetry event when signals are present.
+        if step.gray_box is not None:
+            gb = step.gray_box
+            signal_summary = {
+                k: k != "decoding_instability"
+                and getattr(gb, k) is not None
+                and bool(getattr(gb, k))
+                or k == "decoding_instability"
+                and getattr(gb, k) is not None
+                for k in (
+                    "logprobs",
+                    "token_entropy",
+                    "relevance_scores",
+                    "tool_confidence",
+                    "decoding_instability",
+                )
+            }
+            gb_evt = normalize_event(
+                "gray_box.received",
+                session_id=session_id,
+                trace_id=step.trace_id,
+                payload={"signals_present": signal_summary, "mode": step.mode},
+                step_id=step.step_id,
+            )
+            self.store.add_event(session_id, gb_evt)
+
         snapshot: ScoreSnapshot = score_step(step)
         self.store.add_score(session_id, snapshot)
 

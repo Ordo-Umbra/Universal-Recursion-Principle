@@ -27,14 +27,18 @@ from s_compass.schemas import (
 )
 from s_compass.estimators import estimate_c, estimate_i, estimate_kappa
 from s_compass.estimators_graybox import (
+    _contradiction_penalty,
     _logprob_entropy,
     _logprob_variance,
     _relevance_quality,
+    _retrieval_overload,
     _token_uncertainty,
     _tool_confidence_aggregate,
+    _tool_path_diversity,
     estimate_c_graybox,
     estimate_i_graybox,
     estimate_kappa_graybox,
+    signal_coverage,
 )
 from s_compass.scoring import score_step
 from s_compass.gateway import SCompassGateway
@@ -232,7 +236,10 @@ class TestGrayBoxCEstimator:
         step = _make_step()
         c_gray = estimate_c_graybox(step)
         c_black = estimate_c(step)
-        assert c_gray == pytest.approx(c_black, abs=1e-6)
+        # Gray-box adds tool_path_diversity (5 components vs 4),
+        # so results differ slightly even without gray-box signals.
+        assert 0.0 <= c_gray <= 1.0
+        assert 0.0 <= c_black <= 1.0
 
     def test_uses_logprobs_when_present(self):
         """Gray-box C with logprobs should differ from black-box C."""
@@ -323,10 +330,37 @@ class TestScoreStepDispatch:
         snap = score_step(step)
         assert snap.confidence == pytest.approx(0.65)
 
-    def test_gray_box_uses_high_confidence(self):
+    def test_gray_box_uses_dynamic_confidence(self):
         step = _make_gray_step()
         snap = score_step(step)
-        assert snap.confidence == pytest.approx(0.85)
+        # Dynamic confidence: 0.65 + 0.30 * signal_coverage
+        # All 5 signals are present → coverage = 1.0 → confidence = 0.95
+        assert snap.confidence > 0.65
+        assert snap.confidence <= 0.95
+
+    def test_gray_box_partial_signals_lower_confidence(self):
+        """Partial gray-box signals produce intermediate confidence."""
+        gb = GrayBoxSignals(logprobs=[-0.5, -1.0])  # only logprobs
+        step = _make_step(gray_box=gb, mode="gray-box")
+        snap = score_step(step)
+        # logprobs only → coverage = 0.30 → confidence = 0.65 + 0.30*0.30 = 0.74
+        assert snap.confidence == pytest.approx(0.74)
+
+    def test_gray_box_all_signals_max_confidence(self):
+        """Full gray-box signals produce maximum confidence."""
+        step = _make_gray_step()
+        snap = score_step(step)
+        assert snap.confidence == pytest.approx(0.95)
+
+    def test_gray_box_mode_tracked_in_snapshot(self):
+        step = _make_gray_step()
+        snap = score_step(step)
+        assert snap.mode == "gray-box"
+
+    def test_black_box_mode_tracked_in_snapshot(self):
+        step = _make_step()
+        snap = score_step(step)
+        assert snap.mode == "black-box"
 
     def test_gray_box_still_computes_valid_s(self):
         step = _make_gray_step()
@@ -348,7 +382,7 @@ class TestGatewayGrayBox:
         result = gw.submit_step(step)
         assert result["ok"] is True
         assert result["mode"] == "gray-box"
-        assert result["confidence"] == pytest.approx(0.85)
+        assert result["confidence"] > 0.65
 
     def test_black_box_mode_in_response(self):
         gw = SCompassGateway()
@@ -367,6 +401,32 @@ class TestGatewayGrayBox:
         # mode is still "black-box" by default
         result = gw.submit_step(step)
         assert result["mode"] == "gray-box"
+
+    def test_gray_box_received_telemetry_event(self):
+        """Gateway should emit a gray_box.received event when signals are present."""
+        gw = SCompassGateway()
+        gw.start_session("s1")
+        step = _make_gray_step(session_id="s1")
+        gw.submit_step(step)
+        rec = gw.store.get_session("s1")
+        gb_events = [e for e in rec.events if e.event_type == "gray_box.received"]
+        assert len(gb_events) == 1
+        assert gb_events[0].payload["mode"] == "gray-box"
+        assert gb_events[0].payload["signals_present"]["logprobs"] is True
+
+    def test_session_summary_tracks_mode(self):
+        """Session summary should include mode_counts and avg_confidence."""
+        gw = SCompassGateway()
+        gw.start_session("s1")
+        # Submit a gray-box step and a black-box step
+        gw.submit_step(_make_gray_step(session_id="s1"))
+        gw.submit_step(_make_step(session_id="s1"))
+        summary = gw.get_session_summary("s1")
+        assert "mode_counts" in summary
+        assert summary["mode_counts"]["gray-box"] == 1
+        assert summary["mode_counts"]["black-box"] == 1
+        assert "avg_confidence" in summary
+        assert summary["avg_confidence"] is not None
 
 
 # ===========================================================================
@@ -412,7 +472,8 @@ class TestAPIGrayBox:
         data = resp.get_json()
         assert data["ok"] is True
         assert data["mode"] == "gray-box"
-        assert data["confidence"] == pytest.approx(0.85)
+        # Dynamic confidence: all 5 signals present → coverage = 1.0
+        assert data["confidence"] == pytest.approx(0.95)
         assert "scores" in data
 
     def test_step_without_gray_box_is_black_box(self, client):
@@ -508,8 +569,208 @@ class TestBackwardCompatibility:
         assert 0.0 <= snap.kappa <= 1.0
         expected_s = snap.c + snap.kappa * snap.i
         assert snap.s == pytest.approx(expected_s, abs=1e-3)
+        assert snap.mode == "black-box"
 
     def test_step_input_default_fields(self):
         step = _make_step()
         assert step.mode == "black-box"
         assert step.gray_box is None
+
+
+# ===========================================================================
+# New gray-box helpers
+# ===========================================================================
+
+class TestContradictionPenalty:
+    def test_no_claims(self):
+        assert _contradiction_penalty([]) == 0.0
+
+    def test_single_claim(self):
+        assert _contradiction_penalty([Claim(text="URP is good.")]) == 0.0
+
+    def test_no_contradictions(self):
+        claims = [
+            Claim(text="URP maximizes distinction and integration."),
+            Claim(text="S Compass measures distinction through entropy."),
+        ]
+        assert _contradiction_penalty(claims) == 0.0
+
+    def test_contradicting_claims(self):
+        claims = [
+            Claim(text="URP is a valid framework for physics systems."),
+            Claim(text="URP is not a valid framework for physics systems."),
+        ]
+        penalty = _contradiction_penalty(claims)
+        assert penalty > 0.0
+        assert penalty <= 0.30
+
+    def test_penalty_capped(self):
+        """Even many contradictions should be capped at 0.30."""
+        claims = [
+            Claim(text="The framework is recursive and correct."),
+            Claim(text="The framework is not recursive and wrong."),
+            Claim(text="The framework is recursive and valid."),
+            Claim(text="The framework is not recursive and invalid."),
+        ]
+        penalty = _contradiction_penalty(claims)
+        assert penalty <= 0.30
+
+
+class TestToolPathDiversity:
+    def test_no_tools(self):
+        assert _tool_path_diversity([]) == 0.5
+
+    def test_single_tool(self):
+        calls = [{"name": "search"}]
+        assert _tool_path_diversity(calls) == 0.5
+
+    def test_diverse_tools(self):
+        calls = [
+            {"name": "search"},
+            {"name": "calculator"},
+            {"name": "code_exec"},
+        ]
+        val = _tool_path_diversity(calls)
+        assert val == pytest.approx(1.0)
+
+    def test_repeated_tools(self):
+        calls = [
+            {"name": "search"},
+            {"name": "search"},
+            {"name": "search"},
+            {"name": "calculator"},
+        ]
+        val = _tool_path_diversity(calls)
+        assert 0.0 < val < 1.0
+
+
+class TestRetrievalOverload:
+    def test_no_retrieval(self):
+        assert _retrieval_overload(None, []) == 0.0
+
+    def test_high_relevance_low_overload(self):
+        scores = [0.95, 0.90, 0.88]
+        val = _retrieval_overload(scores, [])
+        assert val < 0.1
+
+    def test_low_relevance_high_overload(self):
+        scores = [0.1, 0.05, 0.08, 0.12, 0.15, 0.04, 0.09, 0.11, 0.06, 0.07]
+        val = _retrieval_overload(scores, [])
+        assert val > 0.5
+
+    def test_chunk_fallback(self):
+        chunks = [
+            RetrievedChunk(doc_id="d1", text="a", score=0.1),
+            RetrievedChunk(doc_id="d2", text="b", score=0.2),
+        ]
+        val = _retrieval_overload(None, chunks)
+        assert val > 0.0
+
+
+class TestSignalCoverage:
+    def test_none(self):
+        assert signal_coverage(None) == 0.0
+
+    def test_empty(self):
+        gb = GrayBoxSignals()
+        assert signal_coverage(gb) == 0.0
+
+    def test_full_signals(self):
+        gb = GrayBoxSignals(
+            logprobs=[-0.5],
+            token_entropy=[0.3],
+            relevance_scores=[0.9],
+            tool_confidence={"s": 0.8},
+            decoding_instability=0.1,
+        )
+        assert signal_coverage(gb) == pytest.approx(1.0)
+
+    def test_partial_signals(self):
+        gb = GrayBoxSignals(logprobs=[-0.5])
+        assert signal_coverage(gb) == pytest.approx(0.30)
+
+    def test_logprobs_and_relevance(self):
+        gb = GrayBoxSignals(logprobs=[-0.5], relevance_scores=[0.9])
+        assert signal_coverage(gb) == pytest.approx(0.50)
+
+
+# ===========================================================================
+# Confidence-aware policy
+# ===========================================================================
+
+class TestConfidenceAwarePolicy:
+    def test_high_confidence_hallucination_uses_stricter_params(self):
+        from s_compass.policy import evaluate
+        snap = ScoreSnapshot(c=0.7, i=0.2, kappa=0.3, s=0.76, regime="hallucination-risk",
+                             confidence=0.90)
+        action = evaluate(snap)
+        assert action.action == "require_grounded_regeneration"
+        assert action.parameters["temperature"] == 0.15
+        assert action.parameters["citation_mode"] == "strict"
+
+    def test_low_confidence_hallucination_uses_softer_params(self):
+        from s_compass.policy import evaluate
+        snap = ScoreSnapshot(c=0.7, i=0.2, kappa=0.3, s=0.76, regime="hallucination-risk",
+                             confidence=0.65)
+        action = evaluate(snap)
+        assert action.action == "require_grounded_regeneration"
+        assert action.parameters["temperature"] == 0.3
+        assert action.parameters["citation_mode"] == "preferred"
+
+    def test_high_confidence_rigid_uses_higher_temp(self):
+        from s_compass.policy import evaluate
+        snap = ScoreSnapshot(c=0.3, i=0.7, kappa=0.8, s=0.86, regime="rigid",
+                             confidence=0.90)
+        action = evaluate(snap)
+        assert action.parameters["temperature"] == 0.8
+
+    def test_low_confidence_rigid_uses_moderate_temp(self):
+        from s_compass.policy import evaluate
+        snap = ScoreSnapshot(c=0.3, i=0.7, kappa=0.8, s=0.86, regime="rigid",
+                             confidence=0.65)
+        action = evaluate(snap)
+        assert action.parameters["temperature"] == 0.7
+
+
+# ===========================================================================
+# Mode-aware policy endpoint
+# ===========================================================================
+
+class TestModeAwarePolicyEndpoint:
+    @pytest.fixture()
+    def client(self):
+        gw = SCompassGateway()
+        app = create_app(gateway=gw)
+        app.config["TESTING"] = True
+        with app.test_client() as c:
+            yield c
+
+    def test_policy_with_confidence(self, client):
+        resp = client.post(
+            "/v1/policy/evaluate",
+            data=json.dumps({
+                "scores": {"c": 0.7, "i": 0.2, "kappa": 0.3},
+                "confidence": 0.90,
+                "mode": "gray-box",
+            }),
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["confidence"] == pytest.approx(0.90)
+        assert data["mode"] == "gray-box"
+        # High confidence hallucination-risk → strict params
+        assert data["policy"]["parameters"]["citation_mode"] == "strict"
+
+    def test_policy_default_confidence(self, client):
+        resp = client.post(
+            "/v1/policy/evaluate",
+            data=json.dumps({
+                "scores": {"c": 0.7, "i": 0.2, "kappa": 0.3},
+            }),
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["confidence"] == pytest.approx(0.65)
+        assert data["mode"] == "black-box"

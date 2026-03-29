@@ -17,6 +17,7 @@ from .estimators_graybox import (
     estimate_c_graybox,
     estimate_i_graybox,
     estimate_kappa_graybox,
+    signal_coverage,
 )
 
 
@@ -74,7 +75,8 @@ def score_step(step: StepInput) -> ScoreSnapshot:
     ``S = C + κ I`` and returns a :class:`ScoreSnapshot`.
 
     When gray-box signals are present the higher-fidelity gray-box
-    estimators are used and ``confidence`` is raised accordingly.
+    estimators are used and ``confidence`` is computed dynamically
+    based on which signals are available.
     """
     use_gray = step.mode == "gray-box" and step.gray_box is not None
 
@@ -82,7 +84,9 @@ def score_step(step: StepInput) -> ScoreSnapshot:
         c = estimate_c_graybox(step)
         i = estimate_i_graybox(step)
         kappa = estimate_kappa_graybox(step)
-        confidence = 0.85
+        # Dynamic confidence: black-box floor + weighted coverage of present signals
+        coverage = signal_coverage(step.gray_box)
+        confidence = 0.65 + 0.30 * coverage  # range [0.65, 0.95]
     else:
         c = estimate_c(step)
         i = estimate_i(step)
@@ -99,6 +103,7 @@ def score_step(step: StepInput) -> ScoreSnapshot:
         regime=regime,
         trace_id=step.trace_id,
         confidence=round(confidence, 4),
+        mode=step.mode,
     )
 
 

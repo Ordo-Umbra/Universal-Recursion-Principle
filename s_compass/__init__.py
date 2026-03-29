@@ -42,6 +42,7 @@ from .estimators_graybox import (
     estimate_c_graybox,
     estimate_i_graybox,
     estimate_kappa_graybox,
+    signal_coverage,
 )
 from .scoring import classify_regime, score_step, score_step_dict
 from .policy import evaluate as evaluate_policy
@@ -80,6 +81,7 @@ __all__ = [
     "estimate_c_graybox",
     "estimate_i_graybox",
     "estimate_kappa_graybox",
+    "signal_coverage",
     # Scoring
     "classify_regime",
     "score_step",

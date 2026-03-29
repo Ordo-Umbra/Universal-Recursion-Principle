@@ -213,15 +213,24 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
 
         s = c + kappa * i
         regime = classify_regime(c, i, kappa)
+
+        # Accept optional confidence and mode for confidence-aware policy
+        confidence = body.get("confidence", 0.65)
+        mode = body.get("mode", "black-box")
+
         snapshot = ScoreSnapshot(
             c=c, i=i, kappa=kappa, s=s, regime=regime,
             trace_id=body.get("trace_id"),
+            confidence=confidence,
+            mode=mode,
         )
         action = evaluate_policy(snapshot)
         return jsonify({
             "ok": True,
             "scores": {"c": c, "i": i, "kappa": kappa, "s": round(s, 4)},
             "regime": regime,
+            "confidence": round(confidence, 4),
+            "mode": mode,
             "policy": {
                 "action": action.action,
                 "reason": action.reason,
