@@ -1,20 +1,20 @@
 # S Compass API Benchmark Report
 
-**Generated:** 2026-03-29T17:01:49.301422+00:00
+**Generated:** 2026-03-29T17:29:07.197490+00:00
 
-**Corpus size:** 25 scenarios
+**Corpus size:** 28 scenarios
 
-**Modes exercised:** black-box=20, gray-box=5
+**Modes exercised:** black-box=23, gray-box=5
 
-**Overall regime accuracy:** 22/25 (88.0%)
+**Overall regime accuracy:** 27/28 (96.4%)
 
 ## Per-Regime Accuracy
 
 | Regime | Precision | Recall | F1 | TP | FP | FN |
 |--------|-----------|--------|----|----|----|----|
-| creative-grounded | 0.80 | 0.89 | 0.84 | 8 | 2 | 1 |
+| creative-grounded | 1.00 | 0.90 | 0.95 | 9 | 0 | 1 |
 | hallucination-risk | 0.83 | 1.00 | 0.91 | 5 | 1 | 0 |
-| rigid | 1.00 | 0.67 | 0.80 | 4 | 0 | 2 |
+| rigid | 1.00 | 1.00 | 1.00 | 8 | 0 | 0 |
 | collapse | 1.00 | 1.00 | 1.00 | 5 | 0 | 0 |
 
 ## Confusion Matrix
@@ -23,9 +23,9 @@ _Rows = expected, Columns = computed_
 
 | | creative-grounded | hallucination-risk | rigid | collapse |
 |---|---|---|---|---|
-| **creative-grounded** | **8** | 1 | 0 | 0 |
+| **creative-grounded** | **9** | 1 | 0 | 0 |
 | **hallucination-risk** | 0 | **5** | 0 | 0 |
-| **rigid** | 2 | 0 | **4** | 0 |
+| **rigid** | 0 | 0 | **8** | 0 |
 | **collapse** | 0 | 0 | 0 | **5** |
 
 ## Scenario Details
@@ -42,7 +42,7 @@ _Clear explanation with novel framing and cited sources_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8165, I=0.7500, κ=1.0000, S=1.5665
+- **Scores:** C=0.8371, I=0.7500, κ=1.0000, S=1.5871
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -57,7 +57,7 @@ _Technical explanation connecting theory to practice with retrieval_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `gray-box` (confidence=0.95)
-- **Scores:** C=0.6175, I=0.6790, κ=0.9984, S=1.2954
+- **Scores:** C=0.7301, I=0.6790, κ=0.9984, S=1.4080
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -72,7 +72,7 @@ _Cross-domain synthesis linking biology and physics under URP_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8733, I=0.5556, κ=1.0000, S=1.4289
+- **Scores:** C=0.8850, I=0.5556, κ=1.0000, S=1.4405
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -87,7 +87,7 @@ _Short but precise answer with good grounding_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.7490, I=0.6667, κ=1.0000, S=1.4157
+- **Scores:** C=0.7868, I=0.6667, κ=1.0000, S=1.4535
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -102,7 +102,7 @@ _Answer synthesizing multiple retrieved documents_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.7984, I=0.7333, κ=1.0000, S=1.5318
+- **Scores:** C=0.8260, I=0.7333, κ=1.0000, S=1.5594
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -117,7 +117,7 @@ _Confident claims with no real sources_
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8695, I=0.3333, κ=1.0000, S=1.2028
+- **Scores:** C=0.8126, I=0.3333, κ=1.0000, S=1.1459
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
 
 
@@ -132,7 +132,7 @@ _Sounds technical but is made up with high diversity_
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8661, I=0.3333, κ=1.0000, S=1.1994
+- **Scores:** C=0.8293, I=0.3333, κ=1.0000, S=1.1627
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
 
 
@@ -147,7 +147,7 @@ _Mixes real facts with fabricated details_
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `gray-box` (confidence=0.95)
-- **Scores:** C=0.6712, I=0.2700, κ=0.8183, S=0.8922
+- **Scores:** C=0.6521, I=0.2700, κ=0.8183, S=0.8731
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk (high-confidence detection).
 
 
@@ -162,7 +162,7 @@ _Authoritative tone with completely wrong technical claims_
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8707, I=0.3333, κ=1.0000, S=1.2040
+- **Scores:** C=0.7980, I=0.3333, κ=1.0000, S=1.1313
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
 
 
@@ -177,7 +177,7 @@ _Long, fluent output that says nothing grounded_
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.9601, I=0.3333, κ=1.0000, S=1.2935
+- **Scores:** C=0.9068, I=0.3333, κ=1.0000, S=1.2401
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
 
 
@@ -192,38 +192,38 @@ _Near-verbatim repetition of the source material_
 - **Expected regime:** `rigid`
 - **Computed regime:** `rigid`
 - **Mode:** `gray-box` (confidence=0.89)
-- **Scores:** C=0.3939, I=0.6965, κ=0.9999, S=1.0904
+- **Scores:** C=0.4720, I=0.6965, κ=0.9999, S=1.1685
 - **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
 ### Rigid 02
 
-#### ❌ `rigid-02-template-response`
+#### ✅ `rigid-02-template-response`
 
 _Formulaic, low-diversity answer that copies structure exactly_
 
 - **Prompt:** Summarize the S Compass design.
 - **Output preview:** The S Compass is a system. The system has a gateway. The gateway processes steps. The steps have scores. The scores have...
 - **Expected regime:** `rigid`
-- **Computed regime:** `creative-grounded`
+- **Computed regime:** `rigid`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8609, I=0.4545, κ=1.0000, S=1.3154
-- **Policy:** `none` — System is operating in a healthy regime.
+- **Scores:** C=0.8166, I=0.4545, κ=1.0000, S=1.2712
+- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
 ### Rigid 03
 
-#### ❌ `rigid-03-over-constrained`
+#### ✅ `rigid-03-over-constrained`
 
 _Extremely conservative answer that adds nothing_
 
 - **Prompt:** Can URP explain consciousness?
 - **Output preview:** Based on the documentation, URP proposes S = ΔC + κΔI. Based on the documentation, S measures distinction and integratio...
 - **Expected regime:** `rigid`
-- **Computed regime:** `creative-grounded`
+- **Computed regime:** `rigid`
 - **Mode:** `gray-box` (confidence=0.89)
-- **Scores:** C=0.4844, I=0.4265, κ=0.9999, S=0.9109
-- **Policy:** `none` — System is operating in a healthy regime.
+- **Scores:** C=0.5034, I=0.4265, κ=0.9999, S=0.9299
+- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
 ### Rigid 04
@@ -237,7 +237,7 @@ _Output is almost word-for-word the retrieved context_
 - **Expected regime:** `rigid`
 - **Computed regime:** `rigid`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.5982, I=0.7333, κ=1.0000, S=1.3315
+- **Scores:** C=0.6182, I=0.7333, κ=1.0000, S=1.3515
 - **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
@@ -252,7 +252,7 @@ _Just restates the retrieval as a list, no synthesis_
 - **Expected regime:** `rigid`
 - **Computed regime:** `rigid`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.6014, I=0.8333, κ=1.0000, S=1.4348
+- **Scores:** C=0.6981, I=0.8333, κ=1.0000, S=1.5315
 - **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
@@ -282,7 +282,7 @@ _Degenerate single-token loop under system stress_
 - **Expected regime:** `collapse`
 - **Computed regime:** `collapse`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.3831, I=0.3333, κ=0.2746, S=0.4746
+- **Scores:** C=0.3215, I=0.3333, κ=0.2746, S=0.4130
 - **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
@@ -297,7 +297,7 @@ _Token soup with no structure, tools failing_
 - **Expected regime:** `collapse`
 - **Computed regime:** `collapse`
 - **Mode:** `gray-box` (confidence=0.95)
-- **Scores:** C=0.4957, I=0.2175, κ=0.2209, S=0.5438
+- **Scores:** C=0.4679, I=0.2175, κ=0.2209, S=0.5160
 - **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
@@ -312,7 +312,7 @@ _Totally unrelated output under system stress_
 - **Expected regime:** `collapse`
 - **Computed regime:** `collapse`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.4250, I=0.3333, κ=0.2048, S=0.4933
+- **Scores:** C=0.3550, I=0.3333, κ=0.2048, S=0.4233
 - **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
@@ -327,7 +327,7 @@ _Output cut off mid-sentence suggesting generation failure_
 - **Expected regime:** `collapse`
 - **Computed regime:** `collapse`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.6250, I=0.3333, κ=0.1677, S=0.6809
+- **Scores:** C=0.5500, I=0.3333, κ=0.1677, S=0.6059
 - **Policy:** `reduce_load_and_retry` — System capacity critically low; reduce retrieval breadth.
 
 
@@ -342,7 +342,7 @@ _Novel and diverse output but no retrieval context at all_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8640, I=0.3333, κ=1.0000, S=1.1974
+- **Scores:** C=0.7876, I=0.3333, κ=1.0000, S=1.1209
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk.
 
 
@@ -357,7 +357,7 @@ _Very short answer that is technically correct_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.9646, I=0.6667, κ=1.0000, S=1.6313
+- **Scores:** C=0.9038, I=0.6667, κ=1.0000, S=1.5705
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -372,7 +372,7 @@ _Long output mixing valid claims with some unsupported ones_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.8898, I=0.5714, κ=1.0000, S=1.4613
+- **Scores:** C=0.8902, I=0.5714, κ=1.0000, S=1.4617
 - **Policy:** `none` — System is operating in a healthy regime.
 
 
@@ -387,7 +387,7 @@ _Decent answer but heavily derivative of retrieval_
 - **Expected regime:** `rigid`
 - **Computed regime:** `rigid`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.5961, I=0.7778, κ=1.0000, S=1.3739
+- **Scores:** C=0.5820, I=0.7778, κ=1.0000, S=1.3598
 - **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 
@@ -402,8 +402,53 @@ _Mostly good but ventures into unsupported territory_
 - **Expected regime:** `creative-grounded`
 - **Computed regime:** `creative-grounded`
 - **Mode:** `black-box` (confidence=0.65)
-- **Scores:** C=0.9132, I=0.5000, κ=1.0000, S=1.4132
+- **Scores:** C=0.9239, I=0.5000, κ=1.0000, S=1.4239
 - **Policy:** `none` — System is operating in a healthy regime.
+
+
+### Edge 06 Template With
+
+#### ✅ `edge-06-template-with-diverse-vocab`
+
+_Structurally formulaic but lexically diverse — tests structural repetition detection_
+
+- **Prompt:** Describe the components of S Compass.
+- **Output preview:** The gateway is responsible for orchestrating steps. The telemetry module normalizes incoming events. The estimator compu...
+- **Expected regime:** `rigid`
+- **Computed regime:** `rigid`
+- **Mode:** `black-box` (confidence=0.65)
+- **Scores:** C=0.8530, I=0.4444, κ=1.0000, S=1.2975
+- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
+
+
+### Edge 07
+
+#### ✅ `edge-07-qualified-speculation`
+
+_Speculative output clearly marked as uncertain — creative despite partial grounding_
+
+- **Prompt:** Could URP explain the arrow of time?
+- **Output preview:** While URP does not explicitly address temporal asymmetry, the S-maximization principle offers a suggestive parallel. If ...
+- **Expected regime:** `creative-grounded`
+- **Computed regime:** `creative-grounded`
+- **Mode:** `black-box` (confidence=0.65)
+- **Scores:** C=0.8513, I=0.6667, κ=1.0000, S=1.5180
+- **Policy:** `none` — System is operating in a healthy regime.
+
+
+### Edge 08 Bullet
+
+#### ✅ `edge-08-bullet-point-summary`
+
+_Restating retrieval in repetitive enumeration pattern without adding value_
+
+- **Prompt:** List the key principles of URP.
+- **Output preview:** The key principle is S = ΔC + κΔI. The key principle is that C measures distinction. The key principle is that I measure...
+- **Expected regime:** `rigid`
+- **Computed regime:** `rigid`
+- **Mode:** `black-box` (confidence=0.65)
+- **Scores:** C=0.6817, I=0.5000, κ=1.0000, S=1.1817
+- **Policy:** `increase_temperature` — Output is repetitive; raising temperature to encourage diversity.
 
 ## Session Summaries
 
@@ -411,56 +456,56 @@ _Mostly good but ventures into unsupported territory_
 
 - **Steps:** 5
 - **Regime counts:** {'creative-grounded': 5}
-- **Avg scores:** C=0.7709, I=0.6769, κ=0.9997, S=1.4477
+- **Avg scores:** C=0.8130, I=0.6769, κ=0.9997, S=1.4897
 - **Rolling window (20):**
-  - c: mean=0.7709, std=0.0864, range=[0.6175, 0.8733]
+  - c: mean=0.8130, std=0.0519, range=[0.7301, 0.8850]
   - i: mean=0.6769, std=0.0683, range=[0.5556, 0.7500]
   - kappa: mean=0.9997, std=0.0006, range=[0.9984, 1.0000]
-  - s: mean=1.4477, std=0.0957, range=[1.2954, 1.5665]
+  - s: mean=1.4897, std=0.0704, range=[1.4080, 1.5871]
 
 ### Hallucination-Risk (`bench_hallucination`)
 
 - **Steps:** 5
 - **Regime counts:** {'hallucination-risk': 5}
-- **Avg scores:** C=0.8475, I=0.3206, κ=0.9637, S=1.1584
+- **Avg scores:** C=0.7998, I=0.3206, κ=0.9637, S=1.1106
 - **Rolling window (20):**
-  - c: mean=0.8475, std=0.0950, range=[0.6712, 0.9601]
+  - c: mean=0.7998, std=0.0828, range=[0.6521, 0.9068]
   - i: mean=0.3206, std=0.0253, range=[0.2700, 0.3333]
   - kappa: mean=0.9637, std=0.0727, range=[0.8183, 1.0000]
-  - s: mean=1.1584, std=0.1377, range=[0.8922, 1.2935]
+  - s: mean=1.1106, std=0.1246, range=[0.8731, 1.2401]
 
 ### Rigid (`bench_rigid`)
 
 - **Steps:** 5
-- **Regime counts:** {'creative-grounded': 2, 'rigid': 3}
-- **Avg scores:** C=0.5878, I=0.6288, κ=1.0000, S=1.2166
+- **Regime counts:** {'rigid': 5}
+- **Avg scores:** C=0.6217, I=0.6288, κ=1.0000, S=1.2505
 - **Rolling window (20):**
-  - c: mean=0.5878, std=0.1569, range=[0.3939, 0.8609]
+  - c: mean=0.6217, std=0.1267, range=[0.4720, 0.8166]
   - i: mean=0.6288, std=0.1604, range=[0.4265, 0.8333]
   - kappa: mean=1.0000, std=0.0000, range=[0.9999, 1.0000]
-  - s: mean=1.2166, std=0.1897, range=[0.9109, 1.4348]
+  - s: mean=1.2505, std=0.1995, range=[0.9299, 1.5315]
 
 ### Collapse (`bench_collapse`)
 
 - **Steps:** 5
 - **Regime counts:** {'collapse': 5}
-- **Avg scores:** C=0.4358, I=0.3101, κ=0.2239, S=0.5053
+- **Avg scores:** C=0.3889, I=0.3101, κ=0.2239, S=0.4584
 - **Rolling window (20):**
-  - c: mean=0.4358, std=0.1239, range=[0.2500, 0.6250]
+  - c: mean=0.3889, std=0.1069, range=[0.2500, 0.5500]
   - i: mean=0.3101, std=0.0463, range=[0.2175, 0.3333]
   - kappa: mean=0.2239, std=0.0371, range=[0.1677, 0.2746]
-  - s: mean=0.5053, std=0.1121, range=[0.3338, 0.6809]
+  - s: mean=0.4584, std=0.0937, range=[0.3338, 0.6059]
 
 ### Edge Cases (`bench_edge`)
 
-- **Steps:** 5
-- **Regime counts:** {'creative-grounded': 3, 'hallucination-risk': 1, 'rigid': 1}
-- **Avg scores:** C=0.8455, I=0.5698, κ=1.0000, S=1.4154
+- **Steps:** 8
+- **Regime counts:** {'creative-grounded': 4, 'hallucination-risk': 1, 'rigid': 3}
+- **Avg scores:** C=0.8092, I=0.5575, κ=1.0000, S=1.3667
 - **Rolling window (20):**
-  - c: mean=0.8455, std=0.1291, range=[0.5961, 0.9646]
-  - i: mean=0.5698, std=0.1506, range=[0.3333, 0.7778]
+  - c: mean=0.8092, std=0.1122, range=[0.5820, 0.9239]
+  - i: mean=0.5575, std=0.1333, range=[0.3333, 0.7778]
   - kappa: mean=1.0000, std=0.0000, range=[1.0000, 1.0000]
-  - s: mean=1.4154, std=0.1400, range=[1.1974, 1.6313]
+  - s: mean=1.3667, std=0.1484, range=[1.1209, 1.5705]
 
 ## Standalone Policy Evaluation
 
@@ -480,20 +525,18 @@ Sessions returned by `GET /v1/sessions`: bench_creative, bench_hallucination, be
 
 ## Key Observations
 
-**3 regime mismatches** detected:
+**1 regime mismatches** detected:
 
-- `rigid-02-template-response`: expected `rigid`, got `creative-grounded` (C=0.8609, I=0.4545, κ=1.0000)
-- `rigid-03-over-constrained`: expected `rigid`, got `creative-grounded` (C=0.4844, I=0.4265, κ=0.9999)
-- `edge-01-creative-but-no-retrieval`: expected `creative-grounded`, got `hallucination-risk` (C=0.8640, I=0.3333, κ=1.0000)
+- `edge-01-creative-but-no-retrieval`: expected `creative-grounded`, got `hallucination-risk` (C=0.7876, I=0.3333, κ=1.0000)
 
 ### Score Distributions by Expected Regime
 
 | Regime | Avg C | Avg I | Avg κ | Avg S |
 |--------|-------|-------|-------|-------|
-| creative-grounded | 0.8318 | 0.6062 | 0.9998 | 1.4379 |
-| hallucination-risk | 0.8475 | 0.3206 | 0.9637 | 1.1584 |
-| rigid | 0.5891 | 0.6536 | 1.0000 | 1.2428 |
-| collapse | 0.4358 | 0.3101 | 0.2239 | 0.5053 |
+| creative-grounded | 0.8422 | 0.6123 | 0.9998 | 1.4544 |
+| hallucination-risk | 0.7998 | 0.3206 | 0.9637 | 1.1106 |
+| rigid | 0.6531 | 0.6083 | 1.0000 | 1.2614 |
+| collapse | 0.3889 | 0.3101 | 0.2239 | 0.4584 |
 
 ---
 

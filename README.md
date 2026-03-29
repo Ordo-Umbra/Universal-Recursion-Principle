@@ -164,9 +164,9 @@ Every scored step is classified into one of four regimes:
 |--------|------|--------------------|
 | `s_compass/schemas.py` | Canonical event envelopes, claims, evidence, scores, policy actions, gray-box signals | §9, §10, §6.2 |
 | `s_compass/telemetry.py` | Telemetry normalizer — converts heterogeneous payloads into canonical events | §4.2 |
-| `s_compass/estimators.py` | Black-box C, I, κ estimators with `normalize` and `capacity_field` helpers | §4.3–4.5, §11, §19 |
+| `s_compass/estimators.py` | Black-box C, I, κ estimators with `normalize` and `capacity_field` helpers; includes structural repetition and retrieval-echo novelty metrics | §4.3–4.5, §11, §19 |
 | `s_compass/estimators_graybox.py` | Gray-box C, I, κ estimators with logprob entropy, relevance quality, contradiction penalty, retrieval overload | §4.3–4.5, §6.2, §19 |
-| `s_compass/scoring.py` | S scoring engine and regime classifier — dispatches to gray-box or black-box estimators based on mode | §4.6, §12 |
+| `s_compass/scoring.py` | S scoring engine and regime classifier — dispatches to gray-box or black-box estimators based on mode; includes template-rigid detection via structural novelty | §4.6, §12 |
 | `s_compass/policy.py` | Confidence-aware policy engine — turns scores into actionable recommendations | §4.7 |
 | `s_compass/store.py` | In-memory evaluation store for sessions, steps, scores, and interventions | §4.8 |
 | `s_compass/extraction.py` | Claim extraction, evidence linking, and contradiction detection from model outputs | §4.4, §16 |
@@ -218,7 +218,7 @@ print(result["confidence"])  # 0.80+ (dynamic, based on signal coverage)
 ### Running Tests
 
 ```bash
-# Full test suite (all 265 tests including gray-box and benchmark tests)
+# Full test suite (all 284 tests including gray-box, benchmark, and structural metrics tests)
 python -m pytest -v
 
 # Individual test modules
@@ -240,7 +240,7 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 
 ### What the Benchmark Tests
 
-* **25 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes
+* **28 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes (including 3 new boundary-stress scenarios)
 * **5 gray-box benchmark traces** with explicit mode/confidence reporting for traces that supply logprobs, relevance scores, and tool-confidence signals
 * **All 7 REST API endpoints**: session start, step submission, session summary, session list, rolling-window stats, trace graph, and policy evaluation
 * **Per-regime precision, recall, and F1** with a confusion matrix
@@ -249,26 +249,27 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 
 ### Current Results
 
-**Overall accuracy: 88.0% (22/25 correct regime classifications)**
+**Overall accuracy: 96.4% (27/28 correct regime classifications)**
 
 | Regime | Precision | Recall | F1 |
 |--------|-----------|--------|-----|
-| Creative-grounded | 0.80 | 0.89 | 0.84 |
+| Creative-grounded | 1.00 | 0.90 | 0.95 |
 | Hallucination-risk | 0.83 | 1.00 | 0.91 |
-| Rigid | 1.00 | 0.67 | 0.80 |
+| Rigid | 1.00 | 1.00 | 1.00 |
 | Collapse | 1.00 | 1.00 | 1.00 |
 
 **Interpreting the results:**
 
-- **Collapse detection is perfect** (F1=1.00). The κ estimator reliably captures context pressure, latency spikes, and tool failures, and degenerate outputs produce low C and I. This is the clearest regime signal.
+- **Rigid detection is now perfect** (F1=1.00). The new structural repetition detector catches template-style outputs ("The X is Y. The X has Z.") that have high lexical diversity but repetitive sentence structure. This fixes the two previously-misclassified rigid scenarios (`rigid-02-template-response` and `rigid-03-over-constrained`).
+- **Collapse detection is perfect** (F1=1.00). The κ estimator reliably captures context pressure, latency spikes, and tool failures, and degenerate outputs produce low C and I.
 - **Hallucination-risk recall is perfect** (1.00). Every hallucination scenario is caught. The one false positive (an edge case where creative output lacks any retrieval context) represents a reasonable design choice: flagging ungrounded novelty.
-- **Rigid detection works well** for clear cases (echo-retrieval, list-only restating) but two false negatives exist: `rigid-02-template-response` has lexically diverse vocabulary despite structural repetition (C=0.86), and `rigid-03-over-constrained` falls into a borderline zone (C=0.48, I=0.43). This highlights a known estimator gap: the current C proxy measures token diversity, not structural diversity.
-- **Gray-box mode** consistently produces higher confidence (dynamic, typically 0.85–0.95 depending on signal coverage) and enables more decisive policy interventions. The dynamic confidence mechanism correctly reflects signal availability.
+- **Creative-grounded precision is perfect** (1.00). No false positives — when the system says "creative-grounded", it's always correct.
+- **Gray-box mode** consistently produces higher confidence (dynamic, typically 0.85–0.95 depending on signal coverage) and enables more decisive policy interventions.
 
 **Score separation across regimes** confirms that the metrics capture meaningful distinctions:
-- Creative-grounded: high C (0.83), moderate I (0.61), full κ (1.00), highest S (1.44)
+- Creative-grounded: high C (0.83), moderate I (0.63), full κ (1.00), highest S (1.46)
 - Hallucination-risk: high C (0.85), low I (0.32) — the hallmark signature
-- Rigid: lower C (0.59), higher I (0.65) — integration dominates distinction
+- Rigid: moderate C (0.64), higher I (0.62) — integration dominates distinction
 - Collapse: all scores depressed, especially κ (0.22) — clear capacity failure
 
 See [benchmarks/REPORT.md](benchmarks/REPORT.md) for the full scenario-by-scenario report, including per-scenario mode/confidence, scores, a confusion matrix, and identified estimator gaps.

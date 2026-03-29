@@ -177,16 +177,18 @@ class TestGrayBoxBenchmarking:
                 assert s["confidence"] == pytest.approx(0.65)
 
     def test_gray_box_rigid_scenarios_match(self, benchmark_results):
-        """Representative rigid gray-box traces should classify correctly."""
+        """Gray-box rigid traces should classify correctly.
+
+        Both rigid-01 (rote repetition) and rigid-03 (over-constrained)
+        use gray-box signals.  Structural repetition detection ensures
+        both are now classified as rigid.
+        """
         by_label = {s["label"]: s for s in benchmark_results["scenarios"]}
-        # rigid-01 is strongly repetitive and should always classify as rigid.
-        # rigid-03 may shift to creative-grounded under the improved gray-box
-        # I estimator (which now applies a contradiction penalty from §11).
-        label = "rigid-01-rote-repetition"
-        assert by_label[label]["match"], (
-            f"{label}: expected {by_label[label]['expected_regime']}, "
-            f"got {by_label[label]['computed_regime']}"
-        )
+        for label in ("rigid-01-rote-repetition", "rigid-03-over-constrained"):
+            assert by_label[label]["match"], (
+                f"{label}: expected {by_label[label]['expected_regime']}, "
+                f"got {by_label[label]['computed_regime']}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -240,14 +242,13 @@ class TestRegimeClassification:
     def test_rigid_well_separated_match(self, benchmark_results):
         """Well-separated rigid scenarios should be classified correctly.
 
-        Rigid scenarios whose output directly echoes retrieval context
-        (high I, lower C) should be detected.  Structurally rigid but
-        lexically diverse scenarios may still be borderline.
+        All five rigid scenarios are expected to match now that structural
+        repetition detection catches template-style outputs with high
+        lexical diversity but low structural diversity.
         """
-        well_separated = {"rigid-04-echo-retrieval", "rigid-05-list-only"}
         rigid = [
             s for s in benchmark_results["scenarios"]
-            if s["label"] in well_separated
+            if s["label"].startswith("rigid-")
         ]
         for s in rigid:
             assert s["match"], (

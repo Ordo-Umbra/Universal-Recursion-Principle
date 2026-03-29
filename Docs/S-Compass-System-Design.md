@@ -798,7 +798,7 @@ Reference implementations should surface small helpers (e.g., `normalize`, `capa
 
 ### 20.1 Corpus design
 
-The benchmark corpus (`benchmarks/corpus.py`) contains **25 human-labelled scenarios** spanning all four behavioural regimes plus edge cases:
+The benchmark corpus (`benchmarks/corpus.py`) contains **28 human-labelled scenarios** spanning all four behavioural regimes plus edge cases:
 
 | Group | Count | Purpose |
 |-------|-------|---------|
@@ -806,7 +806,7 @@ The benchmark corpus (`benchmarks/corpus.py`) contains **25 human-labelled scena
 | Hallucination-risk | 5 | Confident but fabricated or unsupported claims |
 | Rigid | 5 | Repetitive, template-like, or retrieval-echo outputs |
 | Collapse | 5 | Degenerate, incoherent, or truncated outputs under system stress |
-| Edge cases | 5 | Borderline scenarios that stress the regime classifier |
+| Edge cases | 8 | Borderline scenarios that stress the regime classifier, including template-with-diverse-vocab, qualified speculation, and bullet-point repetition |
 
 Five scenarios include **gray-box signals** (logprobs, token entropy, relevance scores, tool confidence, and/or decoding instability) to validate the gray-box scoring pipeline end-to-end.
 
@@ -824,36 +824,48 @@ The runner (`benchmarks/run_api_benchmark.py`) exercises all 7 REST API endpoint
 
 ### 20.3 Current results (2026-03-29)
 
-**Overall regime accuracy: 88.0% (22/25)**
+**Overall regime accuracy: 96.4% (27/28)**
 
 | Regime | Precision | Recall | F1 |
 |--------|-----------|--------|-----|
-| Creative-grounded | 0.80 | 0.89 | 0.84 |
+| Creative-grounded | 1.00 | 0.90 | 0.95 |
 | Hallucination-risk | 0.83 | 1.00 | 0.91 |
-| Rigid | 1.00 | 0.67 | 0.80 |
+| Rigid | 1.00 | 1.00 | 1.00 |
 | Collapse | 1.00 | 1.00 | 1.00 |
 
 **Score distributions by regime:**
 
 | Regime | Avg C | Avg I | Avg κ | Avg S |
 |--------|-------|-------|-------|-------|
-| Creative-grounded | 0.83 | 0.61 | 1.00 | 1.44 |
+| Creative-grounded | 0.83 | 0.63 | 1.00 | 1.46 |
 | Hallucination-risk | 0.85 | 0.32 | 0.96 | 1.16 |
-| Rigid | 0.59 | 0.65 | 1.00 | 1.24 |
-| Collapse | 0.44 | 0.31 | 0.22 | 0.51 |
+| Rigid | 0.64 | 0.62 | 1.00 | 1.26 |
+| Collapse | 0.39 | 0.31 | 0.22 | 0.46 |
 
-**Known misclassifications (3/25):**
+**Known misclassification (1/28):**
 
-1. `rigid-02-template-response` — expected rigid, classified as creative-grounded (C=0.86). The output uses structurally formulaic sentences but with lexically diverse vocabulary, defeating the current token-diversity proxy for C.
-2. `rigid-03-over-constrained` — expected rigid, classified as creative-grounded (C=0.48, I=0.43). The output falls into a borderline zone where both C and I are moderate, below the thresholds that would trigger the rigid classifier.
-3. `edge-01-creative-but-no-retrieval` — expected creative-grounded, classified as hallucination-risk (I=0.33). The output is genuinely creative but lacks any retrieval context, so the I estimator correctly reports low groundedness; the label question is whether "creative without grounding" should be flagged.
+1. `edge-01-creative-but-no-retrieval` — expected creative-grounded, classified as hallucination-risk (I=0.33). The output is genuinely creative but lacks any retrieval context, so the I estimator correctly reports low groundedness; the design question is whether "creative without grounding" should be flagged as a risk.
 
-### 20.4 Gray-box benchmark observations
+**Previously-fixed misclassifications:**
+
+* `rigid-02-template-response` — previously misclassified as creative-grounded (C=0.82 from lexical diversity). Fixed by structural repetition detection: the template-rigid rule detects that sentence-level structure is repetitive (novelty=0.37 < 0.40) despite high lexical diversity.
+* `rigid-03-over-constrained` — previously misclassified as creative-grounded (C=0.50, I=0.43 in a borderline zone). Fixed by the same template-rigid rule: the repeated "Based on the documentation" prefix gives structural novelty=0.21.
+
+### 20.4 Structural repetition detection
+
+The C estimator now includes two structural novelty metrics in addition to the original lexical metrics:
+
+* **`_sentence_structure_novelty`** — Measures first-word concentration, sentence complexity (average length), and length diversity. Returns low values for template patterns like "The X is Y. The X has Z." where every sentence starts with the same word and follows the same structure.
+* **`_retrieval_echo_novelty`** — Measures trigram overlap between the output and retrieved context. Returns low values when the output closely echoes retrieval chunks.
+
+The regime classifier uses a **template-rigid rule**: when `structural_novelty < 0.40` and integration I ≥ 0.35 and capacity κ ≥ 0.45, the output is classified as rigid regardless of its lexical C score. This catches formulaic outputs that defeat the token-diversity proxy.
+
+### 20.5 Gray-box benchmark observations
 
 - Gray-box scenarios consistently produce higher confidence (dynamic, typically 0.85–0.95 depending on signal coverage) and the scoring engine correctly routes through the gray-box estimators.
 - Hallucination-risk scenario `hallucination-risk-03-mixed-real-and-fake` benefits from gray-box signals: relevance scores lower κ via retrieval overload, and the contradiction penalty reduces I.
 - Rigid scenario `rigid-01-rote-repetition` classifies correctly under gray-box mode, with C accurately reflecting the low novelty of pure repetition.
-- Rigid scenario `rigid-03-over-constrained` is a known borderline case: even with gray-box signals (confidence=0.89), the moderate C and I scores fall outside the rigid detection thresholds.
+- Rigid scenario `rigid-03-over-constrained` now correctly classifies as rigid under gray-box mode (confidence=0.89), using the template-rigid detection rule.
 - Collapse scenario `collapse-03-incoherent-fragments` shows gray-box signals amplifying capacity stress through tool confidence and decoding instability.
 
 See `benchmarks/REPORT.md` for the full scenario-by-scenario report.

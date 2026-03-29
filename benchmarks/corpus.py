@@ -717,6 +717,82 @@ EDGE_CASES: List[Dict[str, Any]] = [
             ), "score": 0.70},
         ],
     ),
+    _scenario(
+        label="edge-06-template-with-diverse-vocab",
+        description="Structurally formulaic but lexically diverse — tests structural repetition detection",
+        expected_regime="rigid",
+        prompt="Describe the components of S Compass.",
+        output_text=(
+            "The gateway is responsible for orchestrating steps. "
+            "The telemetry module normalizes incoming events. "
+            "The estimator computes distinction scores. "
+            "The scorer assigns regime classifications. "
+            "The policy engine recommends corrective actions. "
+            "The store persists session data permanently."
+        ),
+        citations=[
+            {"doc_id": "design", "text": "gateway orchestrates steps"},
+            {"doc_id": "design", "text": "telemetry normalizes events"},
+        ],
+        retrieved_context=[
+            {"doc_id": "design", "text": (
+                "S Compass has a gateway, telemetry normalizer, estimators, "
+                "scorer, policy engine, and evaluation store."
+            ), "score": 0.92},
+        ],
+        temperature=0.1,
+    ),
+    _scenario(
+        label="edge-07-qualified-speculation",
+        description="Speculative output clearly marked as uncertain — creative despite partial grounding",
+        expected_regime="creative-grounded",
+        prompt="Could URP explain the arrow of time?",
+        output_text=(
+            "While URP does not explicitly address temporal asymmetry, the "
+            "S-maximization principle offers a suggestive parallel. If entropy "
+            "increase drives thermodynamic irreversibility, then ΔC growth "
+            "under finite κ may impose a natural directionality: systems that "
+            "maximize S cannot reverse their accumulated distinctions without "
+            "losing integration. This is speculative but consistent with the "
+            "framework's emphasis on irreversible recursive deepening. The "
+            "connection between S-growth and the second law of thermodynamics "
+            "deserves formal investigation."
+        ),
+        citations=[
+            {"doc_id": "urp_main", "text": "ΔC growth under finite κ"},
+            {"doc_id": "urp_main", "text": "irreversible recursive deepening"},
+        ],
+        retrieved_context=[
+            {"doc_id": "urp_main", "text": (
+                "Systems that maximize S undergo irreversible recursive "
+                "deepening, accumulating distinctions that cannot be reversed."
+            ), "score": 0.82},
+        ],
+    ),
+    _scenario(
+        label="edge-08-bullet-point-summary",
+        description="Restating retrieval in repetitive enumeration pattern without adding value",
+        expected_regime="rigid",
+        prompt="List the key principles of URP.",
+        output_text=(
+            "The key principle is S = ΔC + κΔI. The key principle is that "
+            "C measures distinction. The key principle is that I measures "
+            "integration. The key principle is that κ is the capacity field. "
+            "The key principle is that systems maximize S. The key principle "
+            "is that failure leads to collapse."
+        ),
+        citations=[
+            {"doc_id": "urp_main", "text": "S = ΔC + κΔI"},
+            {"doc_id": "urp_main", "text": "systems maximize S recursively"},
+        ],
+        retrieved_context=[
+            {"doc_id": "urp_main", "text": (
+                "URP proposes S = ΔC + κΔI where C is distinction, I is "
+                "integration, κ is capacity. Systems recursively maximize S."
+            ), "score": 0.97},
+        ],
+        temperature=0.1,
+    ),
 ]
 
 

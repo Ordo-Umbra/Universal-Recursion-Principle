@@ -434,3 +434,183 @@ class TestRollingWindowStats:
             store.add_score("s1", ScoreSnapshot(c=0.9, i=0.5, kappa=0.8, s=1.3, regime="creative-grounded"))
         result = store.rolling_window_stats("s1", window=3)
         assert result["stats"]["c"]["mean"] == pytest.approx(0.9, abs=1e-4)
+
+
+# ===========================================================================
+# Structural novelty and retrieval echo metrics
+# ===========================================================================
+
+class TestSentenceStructureNovelty:
+    """Tests for the _sentence_structure_novelty metric."""
+
+    def test_degenerate_short_text(self):
+        from s_compass.estimators import _sentence_structure_novelty
+        assert _sentence_structure_novelty("I I I") == 0.0
+
+    def test_no_sentence_boundaries(self):
+        from s_compass.estimators import _sentence_structure_novelty
+        val = _sentence_structure_novelty(
+            "the the the the the the the the the the"
+        )
+        assert val == pytest.approx(0.1)
+
+    def test_single_sentence(self):
+        from s_compass.estimators import _sentence_structure_novelty
+        val = _sentence_structure_novelty(
+            "URP proposes that systems maximize S."
+        )
+        assert val == 0.5  # neutral for single sentence
+
+    def test_template_pattern_low_novelty(self):
+        """Structurally repetitive 'The X is/has/does Y' template."""
+        from s_compass.estimators import _sentence_structure_novelty
+        text = (
+            "The system is good. The framework has potential. "
+            "The model does inference. The output has quality. "
+            "The pipeline is fast. The code is clean."
+        )
+        val = _sentence_structure_novelty(text)
+        assert val < 0.45
+
+    def test_repeated_prefix_very_low(self):
+        """All sentences start with same phrase."""
+        from s_compass.estimators import _sentence_structure_novelty
+        text = (
+            "Based on the docs, URP is recursive. "
+            "Based on the docs, S measures quality. "
+            "Based on the docs, the framework works. "
+            "Based on the docs, further study is needed."
+        )
+        val = _sentence_structure_novelty(text)
+        assert val < 0.30
+
+    def test_diverse_structure_high_novelty(self):
+        """Creative text with diverse sentence structures."""
+        from s_compass.estimators import _sentence_structure_novelty
+        text = (
+            "The Universal Recursion Principle proposes that all persistent "
+            "systems share one dynamical law. When a system generates new "
+            "distinctions and integrates them, it persists and grows. "
+            "However, failure to balance these leads to stagnation. "
+            "This single framework unifies physics, biology, and AI."
+        )
+        val = _sentence_structure_novelty(text)
+        assert val > 0.50
+
+    def test_returns_unit_interval(self):
+        from s_compass.estimators import _sentence_structure_novelty
+        texts = [
+            "Short.",
+            "A. B. C. D. E.",
+            "One sentence with many words but no periods",
+            "Diverse starts. Another kind. Yet more variety. "
+            "Questions work too? Exclamations also!",
+        ]
+        for text in texts:
+            val = _sentence_structure_novelty(text)
+            assert 0.0 <= val <= 1.0
+
+
+class TestRetrievalEchoNovelty:
+    """Tests for the _retrieval_echo_novelty metric."""
+
+    def test_no_retrieval_neutral(self):
+        from s_compass.estimators import _retrieval_echo_novelty
+        assert _retrieval_echo_novelty("Some output text.", []) == 0.5
+
+    def test_short_output_neutral(self):
+        from s_compass.estimators import _retrieval_echo_novelty
+        chunks = [RetrievedChunk(doc_id="d1", text="long text here", score=0.9)]
+        assert _retrieval_echo_novelty("hi", chunks) == 0.5
+
+    def test_verbatim_copy_low_novelty(self):
+        from s_compass.estimators import _retrieval_echo_novelty
+        source = "URP proposes that all persistent systems maximize S through distinction and integration."
+        chunks = [RetrievedChunk(doc_id="d1", text=source, score=0.95)]
+        val = _retrieval_echo_novelty(source, chunks)
+        assert val < 0.1  # near-zero novelty for exact copy
+
+    def test_rephrased_output_high_novelty(self):
+        from s_compass.estimators import _retrieval_echo_novelty
+        retrieval = "URP proposes S maximization through recursive understanding."
+        output = (
+            "The framework described in the paper suggests that systems "
+            "which balance novelty and coherence under capacity constraints "
+            "tend to persist and evolve over time."
+        )
+        chunks = [RetrievedChunk(doc_id="d1", text=retrieval, score=0.9)]
+        val = _retrieval_echo_novelty(output, chunks)
+        assert val > 0.5
+
+    def test_returns_unit_interval(self):
+        from s_compass.estimators import _retrieval_echo_novelty
+        chunks = [RetrievedChunk(doc_id="d1", text="context text here", score=0.8)]
+        texts = [
+            "completely different output about something else",
+            "context text here",
+            "some overlap with context text but also new content",
+        ]
+        for text in texts:
+            val = _retrieval_echo_novelty(text, chunks)
+            assert 0.0 <= val <= 1.0
+
+
+class TestTemplateRigidClassification:
+    """Tests for the template-rigid detection in classify_regime."""
+
+    def test_template_rigid_detected(self):
+        """Low structural novelty + moderate I → rigid."""
+        assert classify_regime(
+            c=0.80, i=0.45, kappa=1.0, structural_novelty=0.30,
+        ) == "rigid"
+
+    def test_structural_novelty_default_no_effect(self):
+        """Without structural_novelty, high-C moderate-I → creative-grounded."""
+        assert classify_regime(c=0.80, i=0.45, kappa=1.0) == "creative-grounded"
+
+    def test_high_structural_novelty_no_rigid(self):
+        """High structural novelty doesn't trigger template-rigid."""
+        assert classify_regime(
+            c=0.80, i=0.45, kappa=1.0, structural_novelty=0.60,
+        ) == "creative-grounded"
+
+    def test_template_rigid_requires_moderate_i(self):
+        """Low structural novelty with low I → hallucination, not rigid."""
+        # I < _I_LOW (0.35) → hallucination check catches first
+        assert classify_regime(
+            c=0.80, i=0.25, kappa=1.0, structural_novelty=0.20,
+        ) == "hallucination-risk"
+
+    def test_template_rigid_requires_moderate_kappa(self):
+        """Low structural novelty with low κ → collapse, not rigid."""
+        assert classify_regime(
+            c=0.30, i=0.30, kappa=0.20, structural_novelty=0.20,
+        ) == "collapse"
+
+    def test_existing_rigid_still_works(self):
+        """Classic rigid pattern (low C, high I) still detected."""
+        assert classify_regime(c=0.2, i=0.8, kappa=0.9) == "rigid"
+
+    def test_c_estimator_includes_structural_metrics(self):
+        """The C estimator should incorporate structural novelty."""
+        # Template-style output (structurally repetitive)
+        step_template = _make_step(
+            output_text=(
+                "The system is good. The system has features. "
+                "The system does tasks. The system works well."
+            ),
+        )
+        # Creative output (structurally diverse)
+        step_creative = _make_step(
+            output_text=(
+                "URP offers a bold unification of physics and cognition. "
+                "When a system balances novelty against coherence under "
+                "finite capacity, it persists. However, imbalance leads "
+                "to either stagnation or collapse."
+            ),
+        )
+        c_template = estimate_c(step_template)
+        c_creative = estimate_c(step_creative)
+        # Both should be valid
+        assert 0.0 <= c_template <= 1.0
+        assert 0.0 <= c_creative <= 1.0
