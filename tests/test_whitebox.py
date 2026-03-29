@@ -664,8 +664,9 @@ class TestAPIWhiteBox:
         data = resp.get_json()
         assert data["ok"] is True
         assert data["mode"] == "white-box"
-        # Hallucination-risk with high confidence + white-box → layer-targeted
-        assert "white-box" in data["policy"]["reason"] or "layerwise" in data["policy"]["reason"]
+        # Hallucination-risk with high confidence + white-box → layer-targeted params
+        assert data["policy"]["parameters"].get("head_dropout") is not None
+        assert data["policy"]["parameters"].get("route_to_safer_variant") is True
 
 
 # ===========================================================================

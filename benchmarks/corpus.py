@@ -2327,20 +2327,21 @@ ALL_SCENARIOS: List[Dict[str, Any]] = (
 )
 
 # Summary statistics for quick reference
+_EDGE_AND_WHITEBOX = EDGE_CASES + WHITE_BOX
 CORPUS_STATS = {
     "total": len(ALL_SCENARIOS),
     "by_regime": {
         "creative-grounded": len(CREATIVE_GROUNDED) + sum(
-            1 for s in EDGE_CASES + WHITE_BOX if s["expected_regime"] == "creative-grounded"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "creative-grounded"
         ),
         "hallucination-risk": len(HALLUCINATION_RISK) + sum(
-            1 for s in EDGE_CASES + WHITE_BOX if s["expected_regime"] == "hallucination-risk"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "hallucination-risk"
         ),
         "rigid": len(RIGID) + sum(
-            1 for s in EDGE_CASES + WHITE_BOX if s["expected_regime"] == "rigid"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "rigid"
         ),
         "collapse": len(COLLAPSE) + sum(
-            1 for s in EDGE_CASES + WHITE_BOX if s["expected_regime"] == "collapse"
+            1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "collapse"
         ),
     },
 }

@@ -55,7 +55,7 @@ def _attention_entropy_mean(attention_entropy: List[float]) -> float:
     if not attention_entropy:
         return 0.0
     mean_ent = sum(attention_entropy) / len(attention_entropy)
-    # Sigmoid-normalise: moderate entropy ≈ 0.5, very high → 1.0
+    # Exponential saturation: moderate entropy ≈ 0.5, very high → 1.0
     return float(1.0 - math.exp(-mean_ent))
 
 
@@ -139,7 +139,8 @@ def _attention_variance_stress(attention_variance: List[float]) -> float:
     if not attention_variance:
         return 0.0
     mean_var = sum(attention_variance) / len(attention_variance)
-    # Sigmoid squash: moderate variance ≈ 0.3, high → 1.0
+    # Shifted sigmoid: maps non-negative variance to [0, 1).
+    # At mean_var=0 → 0.0; moderate variance ≈ 0.3; high → 1.0.
     return float(2.0 / (1.0 + math.exp(-5.0 * mean_var)) - 1.0)
 
 
