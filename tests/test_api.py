@@ -422,6 +422,7 @@ class TestParticleEndpoints:
         properties = {prop["key"]: prop["value"] for prop in data["particle"]["properties"]}
         assert properties["effective_nuclear_charge"] == 1.8366
         assert properties["ionization_potential"] == 24.59
+        assert properties["accuracy_ppm"] == 112
         assert "112 ppm" in data["particle"]["description_text"]
 
     def test_describe_particle_missing_required_fields(self, client):

@@ -229,7 +229,7 @@ _ATOMIC_MASS_LOOKUP = {
 _NONMETALS = {1, 6, 7, 8, 15, 16}
 _METALLOIDS = {5, 14}
 _HELIUM_Z_EFF = 1.8366
-_HELIUM_IONIZATION_EV = 24.590
+_HELIUM_IONIZATION_EV = 24.59
 
 
 def infer_particle_properties(atomic_number: int) -> List[ParticleProperty]:
@@ -311,6 +311,8 @@ def _infer_group(
     shell_occupancy: Dict[int, int],
 ) -> Optional[int]:
     """Infer a periodic-table group where a simple shell model is reliable."""
+    if not shell_occupancy:
+        return None
     if atomic_number == 1:
         return 1
     if atomic_number == 2:
@@ -361,6 +363,9 @@ def _infer_stability_regime(
         return "closed-shell"
     if valence_electrons == 1:
         return "open-shell reactive"
+    # For partially filled orbitals, being one electron short of the local
+    # orbital capacity is treated as "near closure" because small additions can
+    # complete a comparatively stable outer arrangement.
     if valence_electrons == max(0, last_capacity - 1):
         return "near-closure"
     return "open-shell"
