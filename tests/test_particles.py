@@ -40,6 +40,7 @@ def test_submit_particle_description_generates_and_stores_particle():
     assert stored is not None
     assert stored["element_name"] == "Helium"
     assert stored["scores"]["s"] == result["scores"]["s"]
+    assert 0.0 <= stored["scores"]["s"] <= 2.0
 
 
 def test_periodic_table_graph_captures_relationships():

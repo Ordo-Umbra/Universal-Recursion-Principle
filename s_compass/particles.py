@@ -147,12 +147,10 @@ class PeriodicTable:
             if relation not in relations:
                 relations.append(relation)
             data["relations"] = relations
-            data["relation"] = relations[0] if len(relations) == 1 else ",".join(relations)
             return
         graph.add_edge(
             source_id,
             target_id,
-            relation=relation,
             relations=[relation],
         )
 

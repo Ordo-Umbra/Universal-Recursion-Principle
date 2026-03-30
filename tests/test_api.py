@@ -442,6 +442,9 @@ class TestParticleEndpoints:
         table_data = table_resp.get_json()
         assert table_data["ok"] is True
         assert table_data["table"]["elements"][0]["atomic_number"] == 3
+        assert "graph" in table_data["table"]
+        assert "nodes" in table_data["table"]["graph"]
+        assert "edges" in table_data["table"]["graph"]
 
     def test_get_particle_not_found(self, client):
         resp = client.get("/v1/particle/999")
