@@ -407,6 +407,23 @@ class TestParticleEndpoints:
         assert data["particle"]["atomic_number"] == 2
         assert "scores" in data
 
+    def test_describe_particle_without_manual_properties_uses_helium_dynamics(self, client):
+        resp = client.post(
+            "/v1/particle/describe",
+            data=json.dumps({
+                "element_name": "Helium",
+                "atomic_number": 2,
+            }),
+            content_type="application/json",
+        )
+        assert resp.status_code == 201
+        data = resp.get_json()
+        assert data["ok"] is True
+        properties = {prop["key"]: prop["value"] for prop in data["particle"]["properties"]}
+        assert properties["effective_nuclear_charge"] == 1.8366
+        assert properties["ionization_potential"] == 24.59
+        assert "112 ppm" in data["particle"]["description_text"]
+
     def test_describe_particle_missing_required_fields(self, client):
         resp = client.post(
             "/v1/particle/describe",

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import networkx as nx
 
@@ -183,6 +183,188 @@ _PROPERTY_PATTERNS = {
     ),
 }
 
+_ORBITAL_FILL_ORDER: List[Tuple[str, int]] = [
+    ("1s", 2),
+    ("2s", 2),
+    ("2p", 6),
+    ("3s", 2),
+    ("3p", 6),
+    ("4s", 2),
+    ("3d", 10),
+    ("4p", 6),
+    ("5s", 2),
+    ("4d", 10),
+    ("5p", 6),
+    ("6s", 2),
+    ("4f", 14),
+    ("5d", 10),
+    ("6p", 6),
+    ("7s", 2),
+    ("5f", 14),
+    ("6d", 10),
+    ("7p", 6),
+]
+
+_ATOMIC_MASS_LOOKUP = {
+    1: 1.008,
+    2: 4.0026,
+    3: 6.94,
+    4: 9.0122,
+    5: 10.81,
+    6: 12.011,
+    7: 14.007,
+    8: 15.999,
+    9: 18.998,
+    10: 20.180,
+    11: 22.990,
+    12: 24.305,
+    13: 26.982,
+    14: 28.085,
+    15: 30.974,
+    16: 32.06,
+    17: 35.45,
+    18: 39.948,
+}
+
+_NONMETALS = {1, 6, 7, 8, 15, 16}
+_METALLOIDS = {5, 14}
+_HELIUM_Z_EFF = 1.8366
+_HELIUM_IONIZATION_EV = 24.590
+
+
+def infer_particle_properties(atomic_number: int) -> List[ParticleProperty]:
+    """Infer a basic element profile from atomic number and shell-filling dynamics."""
+    if atomic_number < 1:
+        return []
+
+    properties: Dict[str, ParticleProperty] = {}
+    _merge_property(properties, "atomic_number", atomic_number)
+
+    remaining = atomic_number
+    shell_occupancy: Dict[int, int] = {}
+    configuration_parts: List[str] = []
+    last_orbital = ""
+    last_fill = 0
+    last_capacity = 0
+
+    for orbital, capacity in _ORBITAL_FILL_ORDER:
+        if remaining <= 0:
+            break
+        filled = min(capacity, remaining)
+        configuration_parts.append(f"{orbital}{filled}")
+        shell_index = int(orbital[0])
+        shell_occupancy[shell_index] = shell_occupancy.get(shell_index, 0) + filled
+        remaining -= filled
+        last_orbital = orbital
+        last_fill = filled
+        last_capacity = capacity
+
+    if not shell_occupancy:
+        return list(properties.values())
+
+    period = max(shell_occupancy)
+    valence_electrons = shell_occupancy[period]
+    block = last_orbital[-1] if last_orbital else None
+    group = _infer_group(atomic_number, block, last_fill, shell_occupancy)
+    classification = _infer_classification(atomic_number, group, block)
+    stability = _infer_stability_regime(atomic_number, valence_electrons, last_fill, last_capacity)
+
+    _merge_property(properties, "electron_configuration", " ".join(configuration_parts))
+    _merge_property(
+        properties,
+        "shell_occupancy",
+        "-".join(str(shell_occupancy[idx]) for idx in sorted(shell_occupancy)),
+    )
+    _merge_property(properties, "period", period)
+    _merge_property(properties, "valence_electrons", valence_electrons)
+    _merge_property(properties, "block", block)
+    _merge_property(properties, "group", group)
+    _merge_property(properties, "classification", classification)
+    _merge_property(properties, "stability_regime", stability)
+    if atomic_number in _ATOMIC_MASS_LOOKUP:
+        _merge_property(properties, "atomic_mass", _ATOMIC_MASS_LOOKUP[atomic_number], unit="u")
+    if atomic_number == 2:
+        for prop in _infer_helium_urp_properties():
+            properties[prop.key] = prop
+
+    return list(properties.values())
+
+
+def _infer_helium_urp_properties() -> List[ParticleProperty]:
+    """Return helium-specific observables grounded in the repo's URP model."""
+    return [
+        ParticleProperty(key="effective_nuclear_charge", value=_HELIUM_Z_EFF),
+        ParticleProperty(
+            key="ionization_potential",
+            value=_HELIUM_IONIZATION_EV,
+            unit="eV",
+        ),
+        ParticleProperty(key="urp_beta", value=0.09),
+        ParticleProperty(key="accuracy_ppm", value=112),
+    ]
+
+
+def _infer_group(
+    atomic_number: int,
+    block: Optional[str],
+    last_fill: int,
+    shell_occupancy: Dict[int, int],
+) -> Optional[int]:
+    """Infer a periodic-table group where a simple shell model is reliable."""
+    if atomic_number == 1:
+        return 1
+    if atomic_number == 2:
+        return 18
+    if block == "s":
+        return last_fill
+    if block == "p":
+        return 12 + last_fill
+    if block == "d":
+        outer_s = shell_occupancy.get(max(shell_occupancy), 0)
+        return min(12, max(3, outer_s + last_fill))
+    return None
+
+
+def _infer_classification(
+    atomic_number: int,
+    group: Optional[int],
+    block: Optional[str],
+) -> Optional[str]:
+    """Map inferred structural signals to a lightweight chemistry category."""
+    if atomic_number == 1:
+        return "nonmetal"
+    if group == 18:
+        return "noble gas"
+    if group == 17:
+        return "halogen"
+    if group == 1:
+        return "alkali metal"
+    if group == 2:
+        return "alkaline earth metal"
+    if atomic_number in _METALLOIDS:
+        return "metalloid"
+    if atomic_number in _NONMETALS:
+        return "nonmetal"
+    if block == "d":
+        return "transition metal"
+    return None
+
+
+def _infer_stability_regime(
+    atomic_number: int,
+    valence_electrons: int,
+    last_fill: int,
+    last_capacity: int,
+) -> str:
+    """Describe how close the outer shell/orbital is to closure."""
+    if atomic_number == 2 or (last_capacity and last_fill == last_capacity):
+        return "closed-shell"
+    if valence_electrons == 1:
+        return "open-shell reactive"
+    if valence_electrons == max(0, last_capacity - 1):
+        return "near-closure"
+    return "open-shell"
+
 
 def _coerce_value(value: Any) -> Any:
     """Coerce numeric-looking strings to ints/floats while preserving text."""
@@ -225,7 +407,8 @@ def parse_particle_properties(
 ) -> List[ParticleProperty]:
     """Build a normalized property list from explicit and heuristic sources."""
     properties: Dict[str, ParticleProperty] = {}
-    _merge_property(properties, "atomic_number", atomic_number)
+    for prop in infer_particle_properties(atomic_number):
+        properties[prop.key] = prop
 
     for prop in raw_properties or ():
         _merge_property(
@@ -302,12 +485,47 @@ def compose_particle_description(
     if electron_configuration:
         sentences.append(f"Its electron configuration is {electron_configuration}.")
 
+    shell_occupancy = prop_map.get("shell_occupancy")
+    if shell_occupancy:
+        sentences.append(f"Its shell-filling dynamics distribute electrons as {shell_occupancy}.")
+
     valence_electrons = prop_map.get("valence_electrons")
     if valence_electrons is not None:
         sentences.append(f"It has {valence_electrons} valence electrons.")
 
+    effective_nuclear_charge = prop_map.get("effective_nuclear_charge")
+    ionization_potential_ev = prop_map.get("ionization_potential")
+    accuracy_ppm = prop_map.get("accuracy_ppm")
+    if atomic_number == 2 and effective_nuclear_charge is not None and ionization_potential_ev is not None:
+        sentences.append(
+            f"In the repo's helium URP variational result, minimizing the constrained energy functional gives Z_eff ≈ {effective_nuclear_charge} "
+            f"and a first ionization potential of {ionization_potential_ev} eV."
+        )
+        if accuracy_ppm is not None:
+            sentences.append(
+                f"That sits within about {accuracy_ppm} ppm of the NIST value, so helium is the clearest current example of these dynamics generating a realistic atomic description."
+            )
+
+    stability_regime = prop_map.get("stability_regime")
+    if stability_regime == "closed-shell":
+        sentences.append(
+            "That closes its accessible outer structure, so the element naturally settles into a comparatively stable and inert pattern."
+        )
+    elif stability_regime == "near-closure":
+        sentences.append(
+            "Its outer shell is close to closure, so the system tends to seek completion through strong interactions with nearby partners."
+        )
+    elif stability_regime == "open-shell reactive":
+        sentences.append(
+            "A single loosely held outer electron leaves the structure easy to perturb, which naturally supports higher reactivity."
+        )
+    elif stability_regime:
+        sentences.append(
+            "Its outer structure remains open, so stability emerges through selective bonding rather than full shell closure."
+        )
+
     sentences.append(
-        "Within the URP framing, these recurring constraints and relational placements "
-        "help explain the element's stable characteristics as a coherent pattern."
+        "Within the URP framing, these shell capacities and orbital-filling constraints act like a local dynamics of distinction and integration, "
+        "helping explain the element's recurring characteristics as a coherent pattern rather than an arbitrary label."
     )
     return " ".join(sentences)

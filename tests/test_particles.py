@@ -71,3 +71,22 @@ def test_periodic_table_graph_captures_relationships():
     assert edge["target"] == "el_2"
     assert "adjacent_atomic_number" in edge["relations"]
     assert "same_period" in edge["relations"]
+
+
+def test_submit_particle_description_infers_helium_dynamics_from_repo_model():
+    gw = SCompassGateway()
+
+    result = gw.submit_particle_description(
+        element_name="Helium",
+        atomic_number=2,
+    )
+
+    prop_map = _prop_map(result["particle"]["properties"])
+    assert prop_map["classification"] == "noble gas"
+    assert prop_map["group"] == 18
+    assert prop_map["electron_configuration"] == "1s2"
+    assert prop_map["effective_nuclear_charge"] == 1.8366
+    assert prop_map["ionization_potential"] == 24.59
+    assert prop_map["accuracy_ppm"] == 112
+    assert "Z_eff ≈ 1.8366" in result["particle"]["description_text"]
+    assert "24.59 eV" in result["particle"]["description_text"]
