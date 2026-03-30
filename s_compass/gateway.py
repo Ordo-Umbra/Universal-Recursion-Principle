@@ -12,13 +12,20 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from .schemas import Event, PolicyAction, ScoreSnapshot, StepInput
+from .schemas import Event, PolicyAction, RetrievedChunk, ScoreSnapshot, StepInput
 from .scoring import score_step
 from .policy import evaluate as evaluate_policy
 from .store import EvaluationStore
 from .telemetry import normalize_event
 from .extraction import extract_and_link
 from .graph import analyse_coherence
+from .particles import (
+    ParticleDescription,
+    PeriodicTable,
+    compose_particle_description,
+    parse_particle_properties,
+    properties_to_retrieved_context,
+)
 
 
 class SCompassGateway:
@@ -36,6 +43,7 @@ class SCompassGateway:
         self.store = store or EvaluationStore()
         # trace_id → coherence analysis dict (Design-doc §8.4)
         self._trace_graphs: Dict[str, Dict[str, Any]] = {}
+        self.periodic_table = PeriodicTable()
 
     # -- session management -------------------------------------------------
 
@@ -215,3 +223,79 @@ class SCompassGateway:
     def get_trace_graph(self, trace_id: str) -> Optional[Dict[str, Any]]:
         """Return the coherence graph analysis for a trace (Design-doc §8.4)."""
         return self._trace_graphs.get(trace_id)
+
+    # -- particle describer ---------------------------------------------------
+
+    def submit_particle_description(
+        self,
+        *,
+        element_name: str,
+        atomic_number: int,
+        properties: Optional[List[Dict[str, Any]]] = None,
+        description_text: str = "",
+        retrieved_context: Optional[List[RetrievedChunk]] = None,
+        session_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        prompt: Optional[str] = None,
+        mode: str = "black-box",
+    ) -> Dict[str, object]:
+        """Create and score a particle description, then store it in the table."""
+        particle_properties = parse_particle_properties(
+            atomic_number=atomic_number,
+            description_text=description_text,
+            retrieved_context=retrieved_context,
+            raw_properties=properties,
+        )
+
+        context = list(retrieved_context or [])
+        if not context:
+            context = properties_to_retrieved_context(element_name, particle_properties)
+
+        rendered_description = description_text.strip() or compose_particle_description(
+            element_name,
+            atomic_number,
+            particle_properties,
+        )
+
+        step = StepInput(
+            session_id=session_id or "particle_table",
+            prompt=prompt or f"Describe element {element_name} through the S-functional framework.",
+            output_text=rendered_description,
+            retrieved_context=context,
+            mode=mode,
+        )
+        if trace_id:
+            step.trace_id = trace_id
+
+        result = self.submit_step(step)
+        particle = ParticleDescription(
+            element_name=element_name,
+            atomic_number=atomic_number,
+            description_text=rendered_description,
+            properties=particle_properties,
+            scores=dict(result["scores"]),
+            regime=str(result["regime"]),
+            confidence=float(result["confidence"]),
+            mode=str(result["mode"]),
+            session_id=step.session_id,
+            trace_id=step.trace_id,
+        )
+        self.periodic_table.add_description(particle)
+        return {
+            "ok": True,
+            "particle": particle.to_dict(),
+            "scores": result["scores"],
+            "regime": result["regime"],
+            "confidence": result["confidence"],
+            "mode": result["mode"],
+            "policy": result["policy"],
+        }
+
+    def get_particle_description(self, atomic_number: int) -> Optional[Dict[str, Any]]:
+        """Return a stored particle description by atomic number."""
+        particle = self.periodic_table.get_particle(atomic_number)
+        return particle.to_dict() if particle is not None else None
+
+    def get_periodic_table(self) -> Dict[str, Any]:
+        """Return the current periodic-table view."""
+        return self.periodic_table.to_dict()

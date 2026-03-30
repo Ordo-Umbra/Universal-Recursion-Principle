@@ -379,3 +379,72 @@ class TestSessionWindow:
     def test_window_invalid_param(self, seeded_client):
         resp = seeded_client.get("/v1/session/s1/window?window=abc")
         assert resp.status_code == 400
+
+
+# ===========================================================================
+# Particle describer endpoints
+# ===========================================================================
+
+class TestParticleEndpoints:
+    def test_describe_particle(self, client):
+        resp = client.post(
+            "/v1/particle/describe",
+            data=json.dumps({
+                "element_name": "Helium",
+                "atomic_number": 2,
+                "properties": [
+                    {"key": "classification", "value": "noble gas"},
+                    {"key": "group", "value": 18},
+                    {"key": "period", "value": 1},
+                ],
+            }),
+            content_type="application/json",
+        )
+        assert resp.status_code == 201
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert data["particle"]["element_name"] == "Helium"
+        assert data["particle"]["atomic_number"] == 2
+        assert "scores" in data
+
+    def test_describe_particle_missing_required_fields(self, client):
+        resp = client.post(
+            "/v1/particle/describe",
+            data=json.dumps({"element_name": "Helium"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+        data = resp.get_json()
+        assert data["ok"] is False
+
+    def test_get_particle_and_periodic_table(self, client):
+        client.post(
+            "/v1/particle/describe",
+            data=json.dumps({
+                "element_name": "Lithium",
+                "atomic_number": 3,
+                "properties": [
+                    {"key": "group", "value": 1},
+                    {"key": "period", "value": 2},
+                ],
+            }),
+            content_type="application/json",
+        )
+
+        particle_resp = client.get("/v1/particle/3")
+        assert particle_resp.status_code == 200
+        particle_data = particle_resp.get_json()
+        assert particle_data["ok"] is True
+        assert particle_data["particle"]["element_name"] == "Lithium"
+
+        table_resp = client.get("/v1/periodic-table")
+        assert table_resp.status_code == 200
+        table_data = table_resp.get_json()
+        assert table_data["ok"] is True
+        assert table_data["table"]["elements"][0]["atomic_number"] == 3
+
+    def test_get_particle_not_found(self, client):
+        resp = client.get("/v1/particle/999")
+        assert resp.status_code == 404
+        data = resp.get_json()
+        assert data["ok"] is False

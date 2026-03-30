@@ -55,6 +55,13 @@ from .graph import (
     graph_density,
     graph_to_dict,
 )
+from .particles import (
+    ParticleDescription,
+    ParticleProperty,
+    PeriodicTable,
+    compose_particle_description,
+    parse_particle_properties,
+)
 from .api import create_app
 
 __all__ = [
@@ -100,6 +107,12 @@ __all__ = [
     "claim_grounding_ratio",
     "graph_density",
     "graph_to_dict",
+    # Particle describer
+    "ParticleDescription",
+    "ParticleProperty",
+    "PeriodicTable",
+    "compose_particle_description",
+    "parse_particle_properties",
     # API
     "create_app",
 ]

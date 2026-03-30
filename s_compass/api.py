@@ -3,7 +3,7 @@ api.py
 
 REST API for S Compass (Design-doc §8).
 
-Implements the five original endpoints plus two new ones:
+Implements the seven existing endpoints plus three particle endpoints:
 
 * ``POST /v1/session/start``       — start a traced session (§8.1)
 * ``POST /v1/step``                — submit + score an inference step (§8.2)
@@ -12,6 +12,9 @@ Implements the five original endpoints plus two new ones:
 * ``POST /v1/policy/evaluate``     — standalone policy evaluation (§8.5)
 * ``GET  /v1/sessions``            — list all active session IDs (new)
 * ``GET  /v1/session/<id>/window`` — rolling-window score statistics (new)
+* ``POST /v1/particle/describe``   — score + store a particle description
+* ``GET  /v1/particle/<z>``        — fetch one particle description by atomic number
+* ``GET  /v1/periodic-table``      — inspect the current periodic-table view
 
 The module exposes :func:`create_app` which returns a Flask application
 wired to a shared :class:`SCompassGateway`.
@@ -252,5 +255,54 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
                 "parameters": action.parameters,
             },
         }), 200
+
+    # -----------------------------------------------------------------
+    # Particle describer endpoints
+    # -----------------------------------------------------------------
+    @app.route("/v1/particle/describe", methods=["POST"])
+    def describe_particle() -> tuple:
+        body: Dict[str, Any] = request.get_json(silent=True) or {}
+        element_name = body.get("element_name")
+        atomic_number = body.get("atomic_number")
+        if not element_name or atomic_number is None:
+            return jsonify({
+                "ok": False,
+                "error": "element_name and atomic_number are required",
+            }), 400
+
+        raw_chunks = body.get("retrieved_context", [])
+        retrieved_context = [
+            RetrievedChunk(
+                doc_id=c.get("doc_id", ""),
+                text=c.get("text", ""),
+                score=c.get("score", 0.0),
+                chunk_id=c.get("chunk_id"),
+            )
+            for c in raw_chunks
+        ]
+
+        result = gw.submit_particle_description(
+            element_name=str(element_name),
+            atomic_number=int(atomic_number),
+            properties=body.get("properties", []),
+            description_text=body.get("description", ""),
+            retrieved_context=retrieved_context,
+            session_id=body.get("session_id"),
+            trace_id=body.get("trace_id"),
+            prompt=body.get("prompt"),
+            mode=body.get("mode", "black-box"),
+        )
+        return jsonify(result), 201
+
+    @app.route("/v1/particle/<int:atomic_number>", methods=["GET"])
+    def get_particle(atomic_number: int) -> tuple:
+        particle = gw.get_particle_description(atomic_number)
+        if particle is None:
+            return jsonify({"ok": False, "error": "particle not found"}), 404
+        return jsonify({"ok": True, "particle": particle}), 200
+
+    @app.route("/v1/periodic-table", methods=["GET"])
+    def get_periodic_table() -> tuple:
+        return jsonify({"ok": True, "table": gw.get_periodic_table()}), 200
 
     return app
