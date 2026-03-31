@@ -4,9 +4,12 @@ policy.py
 Policy engine for S Compass (Design-doc §4.7).
 
 Translates score snapshots into actionable recommendations.
+Supports drift-aware escalation when session-level trend data is available.
 """
 
 from __future__ import annotations
+
+from typing import Any, Dict, Optional
 
 from .schemas import PolicyAction, ScoreSnapshot
 
@@ -130,5 +133,79 @@ def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
     return PolicyAction(
         action="none",
         reason="System is operating in a healthy regime.",
+        trace_id=snapshot.trace_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Drift-aware policy escalation (Design-doc §4.9)
+# ---------------------------------------------------------------------------
+
+def evaluate_with_drift(
+    snapshot: ScoreSnapshot,
+    drift: Optional[Dict[str, Any]] = None,
+) -> PolicyAction:
+    """Return a drift-aware policy recommendation.
+
+    When *drift* is ``None`` or contains no alerts, behaviour is identical
+    to :func:`evaluate`.  When the drift summary includes alerts (e.g.
+    ``"declining_s"``, ``"regime_instability"``, ``"collapse_risk"``), the
+    policy escalates interventions or adds stabilisation advice.
+
+    Parameters
+    ----------
+    snapshot:
+        The current step's score snapshot.
+    drift:
+        The drift summary dict as returned by
+        :meth:`EvaluationStore.drift_summary`.  May be ``None``.
+    """
+    base = evaluate(snapshot)
+
+    if drift is None:
+        return base
+
+    alerts = drift.get("alerts", [])
+    if not alerts:
+        return base
+
+    # Build escalation suffix for the reason string
+    alert_text = "; ".join(alerts)
+    reason = f"{base.reason} [drift: {alert_text}]"
+
+    params = dict(base.parameters) if base.parameters else {}
+
+    # Escalate temperature downward when S is declining
+    if "declining_s" in alerts:
+        if "temperature" in params:
+            params["temperature"] = max(round(params["temperature"] - 0.10, 2), 0.05)
+
+    # When regime is unstable, recommend a stabilisation hold
+    if "regime_instability" in alerts:
+        params["stabilise"] = True
+
+    # Collapse risk: force load reduction regardless of base action
+    if "collapse_risk" in alerts:
+        return PolicyAction(
+            action="reduce_load_and_retry",
+            reason=f"Collapse risk detected from declining S trend. [drift: {alert_text}]",
+            parameters={
+                "max_retrieval_chunks": params.get("max_retrieval_chunks", 2),
+                "temperature": params.get("temperature", 0.3),
+                "stabilise": True,
+            },
+            trace_id=snapshot.trace_id,
+        )
+
+    # Hallucination drift: tighten citation requirements
+    if "hallucination_drift" in alerts:
+        params["citation_mode"] = "strict"
+        if "max_retrieval_chunks" not in params:
+            params["max_retrieval_chunks"] = 5
+
+    return PolicyAction(
+        action=base.action,
+        reason=reason,
+        parameters=params,
         trace_id=snapshot.trace_id,
     )

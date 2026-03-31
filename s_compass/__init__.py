@@ -46,6 +46,7 @@ from .estimators_graybox import (
 )
 from .scoring import classify_regime, score_step, score_step_dict
 from .policy import evaluate as evaluate_policy
+from .policy import evaluate_with_drift
 from .store import EvaluationStore
 from .extraction import extract_claims, link_evidence, extract_and_link
 from .graph import (
@@ -88,6 +89,7 @@ __all__ = [
     "score_step_dict",
     # Policy
     "evaluate_policy",
+    "evaluate_with_drift",
     # Store
     "EvaluationStore",
     # Extraction
