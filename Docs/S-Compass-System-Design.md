@@ -252,19 +252,49 @@ The evaluation store persists:
 - score snapshots
 - interventions
 - downstream outcomes
+- drift summaries and regime transitions
 
 This enables both live monitoring and retrospective analysis.
 
 ---
 
-### 4.9 Analyst UI / API
+### 4.9 Drift Detection & Regime Transition Tracking
+
+The drift detection layer analyses session-level trends in real time, surfacing early warnings when quality is degrading or behaviour is becoming unstable.
+
+**Score trends**: A least-squares linear regression is computed over the most recent score window for each of C, I, κ, and S.  A negative slope for S indicates declining overall quality; individual component trends help diagnose whether the problem is distinction (C), coherence (I), or capacity (κ).
+
+**Regime transitions**: Every step-over-step regime change is recorded with the step index, previous regime, and new regime.  The transition rate (transitions / (steps - 1)) measures session stability.
+
+**Alerts**: The system generates alerts based on trend and transition patterns:
+
+| Alert | Condition | Meaning |
+|-------|-----------|---------|
+| `declining_s` | S slope ≤ -0.03 over ≥ 3 steps | Overall quality is trending downward |
+| `regime_instability` | Transition rate ≥ 0.30 over ≥ 3 steps | Behaviour is oscillating between regimes |
+| `collapse_risk` | `declining_s` + current regime = collapse | Session is on a trajectory toward failure |
+| `hallucination_drift` | `declining_s` + current regime = hallucination-risk | Quality decline is manifesting as ungrounded output |
+
+**Drift-aware policy escalation**: When drift alerts are present, the policy engine escalates interventions:
+
+- `declining_s` → lower temperature in recommendations by 0.10
+- `regime_instability` → add `stabilise: true` to parameters
+- `collapse_risk` → override to `reduce_load_and_retry` regardless of base action
+- `hallucination_drift` → enforce `citation_mode: strict`
+
+**API access**: `GET /v1/session/{id}/drift?window=N` returns the full drift summary including trends, transitions, transition rate, dominant/current regime, and active alerts.
+
+---
+
+### 4.10 Analyst UI / API
 
 The interface layer exposes:
 
 - session timelines
-- C / I / κ / S trends
+- C / I / κ / S trends (via drift detection)
 - coherence graph views
 - intervention history
+- drift alerts and regime transition history
 - system comparisons across models or prompts
 
 ---

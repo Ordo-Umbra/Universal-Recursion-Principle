@@ -314,7 +314,7 @@ class EvaluationStore:
         regime_counts: Dict[str, int] = {}
         for snap in snaps:
             regime_counts[snap.regime] = regime_counts.get(snap.regime, 0) + 1
-        dominant_regime = max(regime_counts, key=regime_counts.get)
+        dominant_regime = max(regime_counts, key=regime_counts.get) if regime_counts else None
         current_regime = snaps[-1].regime
 
         # Alerts

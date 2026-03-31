@@ -131,7 +131,8 @@ The S Compass is a **runtime observability and control layer** for AI systems �
 - **Rigidity detection**: Low C with high I indicates the model is parroting retrieval context without adding value, prompting temperature increases.
 - **Collapse prevention**: When κ drops (context overload, tool failures, latency spikes), S Compass signals capacity stress before output quality degrades.
 - **Quality monitoring**: Track C, I, κ, and S over time across sessions to identify systemic trends, regression, or model degradation.
-- **Automated intervention**: The policy engine converts scores into actionable recommendations — adjusting temperature, retrieval breadth, citation requirements — without human-in-the-loop delay.
+- **Session-level drift detection**: Monitor S-score trends, regime stability, and transition patterns across a session, with automatic alerts for declining quality (`declining_s`), regime instability, collapse risk, and hallucination drift.
+- **Automated intervention**: The policy engine converts scores into actionable recommendations — adjusting temperature, retrieval breadth, citation requirements — without human-in-the-loop delay. Drift-aware policy escalation tightens interventions when session-level trends are concerning.
 - **Multi-model comparison**: Run different models or configurations through the same benchmark corpus and compare regime distributions and score profiles.
 - **Agent workflow diagnostics**: In multi-step agent systems, S Compass scores each step independently, revealing where in a chain quality breaks down.
 
@@ -168,11 +169,11 @@ Every scored step is classified into one of four regimes:
 | `s_compass/estimators_graybox.py` | Gray-box C, I, κ estimators with logprob entropy, relevance quality, contradiction penalty, retrieval overload | §4.3–4.5, §6.2, §19 |
 | `s_compass/estimators_whitebox.py` | White-box C, I, κ estimators enriched with per-layer attention entropy/variance, head diversity, activation sparsity, KV norm stress, gradient norm instability, and residual stream coherence | §4.3–4.5, §6.3, §19 |
 | `s_compass/scoring.py` | S scoring engine and regime classifier — dispatches to white-box, gray-box, or black-box estimators based on mode; includes template-rigid detection via structural novelty | §4.6, §12 |
-| `s_compass/policy.py` | Confidence-aware policy engine — turns scores into actionable recommendations | §4.7 |
-| `s_compass/store.py` | In-memory evaluation store for sessions, steps, scores, and interventions | §4.8 |
+| `s_compass/policy.py` | Confidence-aware policy engine with drift-aware escalation — turns scores and session trends into actionable recommendations | §4.7, §4.9 |
+| `s_compass/store.py` | In-memory evaluation store for sessions, steps, scores, interventions, drift detection, and regime-transition tracking | §4.8, §4.9 |
 | `s_compass/extraction.py` | Claim extraction, evidence linking, and contradiction detection from model outputs | §4.4, §16 |
 | `s_compass/graph.py` | Coherence graph builder and structural metrics | §4.4, §8.4 |
-| `s_compass/api.py` | REST API — seven endpoints for session, step, graph, window, and policy access | §8 |
+| `s_compass/api.py` | REST API — eight endpoints for session, step, graph, window, drift, and policy access | §8, §4.9 |
 | `s_compass/gateway.py` | Main entry point tying telemetry → extraction → scoring → policy → store, with white-box and gray-box auto-detection | §4.1, §5 |
 
 ### Quick Start
@@ -245,16 +246,37 @@ print(result["mode"])        # 'white-box'
 print(result["confidence"])  # 0.85–0.99 (dynamic, based on signal coverage)
 ```
 
+```python
+# Drift detection: monitor session-level trends and get early warnings
+drift = gw.get_drift_summary("sess_001")
+
+print(drift["s_trend"])              # slope of S over recent window (+ = improving)
+print(drift["regime_transitions"])   # list of regime changes
+print(drift["alerts"])               # e.g. ['declining_s', 'collapse_risk']
+print(drift["dominant_regime"])      # most common regime in window
+print(drift["transition_rate"])      # fraction of steps with regime changes
+```
+
+```python
+# Drift-aware policy: escalate interventions based on session trends
+from s_compass import evaluate_with_drift
+
+policy = evaluate_with_drift(snapshot, drift=drift)
+print(policy.action)        # e.g. 'reduce_load_and_retry' if collapse risk detected
+print(policy.parameters)    # includes 'stabilise': True when regime is unstable
+```
+
 ### Running Tests
 
 ```bash
-# Full test suite (all 364 tests including white-box, gray-box, benchmark, and structural metrics tests)
+# Full test suite (all 409 tests including white-box, gray-box, drift, benchmark, and structural metrics tests)
 python -m pytest -v
 
 # Individual test modules
 python -m pytest tests/test_s_compass.py tests/test_extraction.py tests/test_graph.py tests/test_api.py -v
 python -m pytest tests/test_graybox.py -v      # gray-box estimators, scoring dispatch, API parsing
 python -m pytest tests/test_whitebox.py -v     # white-box estimators, scoring dispatch, gateway, API
+python -m pytest tests/test_drift.py -v        # drift detection, regime transitions, drift-aware policy
 python -m pytest tests/test_benchmark.py -v     # benchmark corpus through the REST API
 ```
 
@@ -274,7 +296,8 @@ python -m benchmarks.run_api_benchmark -o REPORT.md   # report to file
 * **82 human-labelled scenarios** across creative-grounded, hallucination-risk, rigid, and collapse regimes (15 creative, 15 hallucination, 15 rigid, 15 collapse, 18 edge, 4 white-box)
 * **10 gray-box benchmark traces** with explicit mode/confidence reporting for traces that supply logprobs, relevance scores, and tool-confidence signals
 * **4 white-box benchmark traces** that exercise all attention, KV, gradient, and residual-coherence signal paths at full white-box fidelity (confidence ≥ 0.98)
-* **All 7 REST API endpoints**: session start, step submission, session summary, session list, rolling-window stats, trace graph, and policy evaluation
+* **3 drift detection sequences** that exercise session-level trend analysis, regime-transition tracking, and alert generation across multi-step sessions
+* **All 8 REST API endpoints**: session start, step submission, session summary, session list, rolling-window stats, drift detection, trace graph, and policy evaluation
 * **Per-regime precision, recall, and F1** with a confusion matrix
 * **Score distribution analysis** (C, I, κ, S averages by expected regime)
 * **Capacity signal validation** (κ varies with context load, latency, tool failures)

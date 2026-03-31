@@ -22,6 +22,10 @@ _I_CITE_THRESHOLD = 0.35
 _K_OVERLOAD_THRESHOLD = 0.40
 _C_LOW_THRESHOLD = 0.30
 
+# Drift-aware policy thresholds
+_DRIFT_TEMP_REDUCTION = 0.10
+_DRIFT_TEMP_FLOOR = 0.05
+
 
 def evaluate(snapshot: ScoreSnapshot) -> PolicyAction:
     """Return a policy recommendation given the current scores.
@@ -178,7 +182,10 @@ def evaluate_with_drift(
     # Escalate temperature downward when S is declining
     if "declining_s" in alerts:
         if "temperature" in params:
-            params["temperature"] = max(round(params["temperature"] - 0.10, 2), 0.05)
+            params["temperature"] = max(
+                round(params["temperature"] - _DRIFT_TEMP_REDUCTION, 2),
+                _DRIFT_TEMP_FLOOR,
+            )
 
     # When regime is unstable, recommend a stabilisation hold
     if "regime_instability" in alerts:
