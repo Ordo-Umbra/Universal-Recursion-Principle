@@ -17,6 +17,15 @@ from Sims.biology_urp import (
     sagawa_ito_check,
 )
 from Sims.layerwise_transformer import compute_layer_metrics, simulate_layerwise
+from Sims.real_transformer_layerwise import (
+    entropy as real_entropy,
+    softmax as real_softmax,
+    compute_layer_c,
+    compute_layer_i,
+    compute_layer_kappa,
+    compute_layer_s,
+    per_head_metrics,
+)
 
 Z_EFF_REF = 2.0  # Effective nuclear charge near helium optimum
 BETA_DEFAULT = 0.09  # URP nonlinear sharpening parameter used in the paper
@@ -221,3 +230,152 @@ def test_compute_layer_metrics_known_values():
     assert I == pytest.approx(expected_I, abs=1e-6)
     assert kappa > 0
     assert S == pytest.approx(C + kappa * I, rel=1e-6)
+
+
+# ===========================================================================
+# Real transformer layerwise metric functions
+# ===========================================================================
+
+def test_real_transformer_entropy_uniform():
+    """Uniform distribution → H = log(n)."""
+    n = 8
+    p = np.ones(n) / n
+    assert real_entropy(p) == pytest.approx(np.log(n), rel=1e-6)
+
+
+def test_real_transformer_entropy_peaked():
+    """One-hot distribution → H ≈ 0."""
+    p = np.zeros(10)
+    p[3] = 1.0
+    assert real_entropy(p) == pytest.approx(0.0, abs=1e-9)
+
+
+def test_real_transformer_softmax_uniform():
+    """Equal logits → uniform probabilities."""
+    x = np.zeros((4, 8))
+    probs = real_softmax(x)
+    assert np.allclose(probs, 1.0 / 8, atol=1e-10)
+
+
+def test_real_transformer_softmax_preserves_rows():
+    """Softmax rows sum to 1."""
+    rng = np.random.default_rng(42)
+    x = rng.standard_normal((6, 20))
+    probs = real_softmax(x)
+    assert np.allclose(probs.sum(axis=-1), 1.0, atol=1e-10)
+    assert np.all(probs >= 0)
+
+
+def test_real_transformer_c_uniform_logits():
+    """Uniform logits → C = log(vocab_size) (maximum entropy)."""
+    seq_len, vocab = 4, 16
+    logits = np.zeros((seq_len, vocab))
+    c = compute_layer_c(logits)
+    assert c == pytest.approx(np.log(vocab), rel=1e-4)
+
+
+def test_real_transformer_c_peaked_logits():
+    """Peaked logits → C near 0."""
+    seq_len, vocab = 4, 16
+    logits = np.full((seq_len, vocab), -100.0)
+    for i in range(seq_len):
+        logits[i, i % vocab] = 100.0
+    c = compute_layer_c(logits)
+    assert c < 0.01
+
+
+def test_real_transformer_i_uniform_attention():
+    """Uniform attention → I = 0 (no selective routing)."""
+    n_heads, seq_len = 2, 8
+    attn = np.ones((n_heads, seq_len, seq_len)) / seq_len
+    i = compute_layer_i(attn)
+    assert i == pytest.approx(0.0, abs=1e-6)
+
+
+def test_real_transformer_i_focused_attention():
+    """One-hot attention → I = log(n) (maximum integration)."""
+    n_heads, seq_len = 2, 8
+    attn = np.zeros((n_heads, seq_len, seq_len))
+    for h in range(n_heads):
+        for pos in range(seq_len):
+            attn[h, pos, 0] = 1.0  # all attend to position 0
+    i = compute_layer_i(attn)
+    assert i == pytest.approx(np.log(seq_len), rel=1e-4)
+
+
+def test_real_transformer_kappa_uniform():
+    """Uniform attention → low variance → κ ≈ 1."""
+    n_heads, seq_len = 2, 8
+    attn = np.ones((n_heads, seq_len, seq_len)) / seq_len
+    kappa = compute_layer_kappa(attn)
+    assert kappa == pytest.approx(1.0, abs=0.01)
+
+
+def test_real_transformer_kappa_formula():
+    """κ = 1/(1 + β·σ²) matches direct computation."""
+    n_heads, seq_len = 2, 4
+    rng = np.random.default_rng(99)
+    raw = rng.random((n_heads, seq_len, seq_len))
+    attn = raw / raw.sum(axis=-1, keepdims=True)
+    beta = 2.5
+
+    # Direct computation
+    variances = []
+    for h in range(n_heads):
+        for i in range(seq_len):
+            variances.append(float(np.var(attn[h, i])))
+    expected_sigma_sq = float(np.mean(variances))
+    expected_kappa = 1.0 / (1.0 + beta * expected_sigma_sq)
+
+    kappa = compute_layer_kappa(attn, beta=beta)
+    assert kappa == pytest.approx(expected_kappa, rel=1e-9)
+
+
+def test_real_transformer_s_formula():
+    """S = C + κ·I for known inputs."""
+    seq_len, vocab = 4, 16
+    n_heads = 2
+    logits = np.zeros((seq_len, vocab))  # uniform → C = log(16)
+    attn = np.ones((n_heads, seq_len, seq_len)) / seq_len  # uniform → I = 0
+    c, i, kappa, s = compute_layer_s(logits, attn)
+    expected_s = c + kappa * i
+    assert s == pytest.approx(expected_s, rel=1e-9)
+    assert s == pytest.approx(c, rel=1e-6)  # since I ≈ 0
+
+
+def test_real_transformer_s_increases_with_focus():
+    """More focused attention should increase I and thus S."""
+    seq_len, vocab = 4, 16
+    n_heads = 2
+    logits = np.zeros((seq_len, vocab))
+
+    # Diffuse attention
+    attn_diffuse = np.ones((n_heads, seq_len, seq_len)) / seq_len
+    _, _, _, s_diffuse = compute_layer_s(logits, attn_diffuse)
+
+    # Focused attention (one-hot)
+    attn_focused = np.zeros((n_heads, seq_len, seq_len))
+    for h in range(n_heads):
+        for pos in range(seq_len):
+            attn_focused[h, pos, 0] = 1.0
+    _, _, _, s_focused = compute_layer_s(logits, attn_focused)
+
+    assert s_focused > s_diffuse
+
+
+def test_real_transformer_per_head_structure():
+    """per_head_metrics returns one dict per head with expected keys."""
+    n_heads, seq_len = 3, 6
+    rng = np.random.default_rng(42)
+    raw = rng.random((n_heads, seq_len, seq_len))
+    attn = raw / raw.sum(axis=-1, keepdims=True)
+
+    heads = per_head_metrics(attn)
+    assert len(heads) == n_heads
+    for h_info in heads:
+        assert "head" in h_info
+        assert "I_mean" in h_info
+        assert "variance_mean" in h_info
+        assert "max_attn_mean" in h_info
+        assert h_info["variance_mean"] >= 0
+        assert h_info["max_attn_mean"] > 0

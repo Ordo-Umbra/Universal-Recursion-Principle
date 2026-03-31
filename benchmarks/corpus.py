@@ -2326,6 +2326,229 @@ ALL_SCENARIOS: List[Dict[str, Any]] = (
     + WHITE_BOX
 )
 
+# ---------------------------------------------------------------------------
+# DRIFT benchmark sequences
+# ---------------------------------------------------------------------------
+# Each drift scenario is a list of step dicts meant to be submitted in order
+# to a single session.  The ``expected_drift`` key describes the expected
+# drift summary outcome (alerts, dominant_regime, etc.).
+# ---------------------------------------------------------------------------
+
+DRIFT_SCENARIOS: List[Dict[str, Any]] = [
+    {
+        "label": "drift-01-stable-creative",
+        "description": "A stable session that stays creative-grounded throughout.",
+        "expected_drift": {
+            "dominant_regime": "creative-grounded",
+            "alerts_absent": ["declining_s", "regime_instability", "collapse_risk"],
+        },
+        "steps": [
+            _scenario(
+                label="drift-01-step-1",
+                description="Good creative output",
+                expected_regime="creative-grounded",
+                prompt="Explain URP and its applications.",
+                output_text=(
+                    "The Universal Recursion Principle posits that persistent systems "
+                    "maximize S = ΔC + κΔI.  In transformer architectures, C maps to "
+                    "predictive entropy and I to attention structure coherence.  This "
+                    "provides a unified lens for diagnosing hallucination, rigidity, "
+                    "and collapse in production LLM deployments."
+                ),
+                citations=[
+                    {"doc_id": "urp", "text": "maximize S = ΔC + κΔI"},
+                    {"doc_id": "transformer", "text": "predictive entropy"},
+                ],
+                retrieved_context=[
+                    {"doc_id": "urp", "text": "S = ΔC + κΔI is the core formula.", "score": 0.95},
+                ],
+            ),
+            _scenario(
+                label="drift-01-step-2",
+                description="Another good creative output",
+                expected_regime="creative-grounded",
+                prompt="How does S Compass detect hallucinations?",
+                output_text=(
+                    "S Compass detects hallucinations by identifying the signature "
+                    "pattern of high C (diverse, novel output) combined with low I "
+                    "(poor grounding and citation coverage).  When κ is also unstable, "
+                    "the hallucination-risk regime is triggered and the policy engine "
+                    "recommends grounded regeneration with citations."
+                ),
+                citations=[
+                    {"doc_id": "design", "text": "high C combined with low I"},
+                    {"doc_id": "design", "text": "grounded regeneration"},
+                ],
+                retrieved_context=[
+                    {"doc_id": "design", "text": "Hallucination-risk: high C, low I, low κ.", "score": 0.90},
+                ],
+            ),
+            _scenario(
+                label="drift-01-step-3",
+                description="Continued good output",
+                expected_regime="creative-grounded",
+                prompt="What policy actions does S Compass take?",
+                output_text=(
+                    "The policy engine maps each regime to specific interventions: "
+                    "hallucination-risk triggers grounded regeneration with strict "
+                    "citation requirements; rigid triggers temperature increase; "
+                    "collapse triggers load reduction.  Creative-grounded sessions "
+                    "require no intervention.  Confidence from gray-box and white-box "
+                    "signals modulates intervention aggressiveness."
+                ),
+                citations=[
+                    {"doc_id": "policy", "text": "grounded regeneration"},
+                    {"doc_id": "policy", "text": "temperature increase"},
+                ],
+                retrieved_context=[
+                    {"doc_id": "policy", "text": "Policy maps regimes to interventions.", "score": 0.88},
+                ],
+            ),
+        ],
+    },
+    {
+        "label": "drift-02-creative-to-collapse",
+        "description": "Session starts creative then degrades into collapse.",
+        "expected_drift": {
+            "has_declining_s": True,
+            "has_transitions": True,
+        },
+        "steps": [
+            _scenario(
+                label="drift-02-step-1",
+                description="Strong creative start",
+                expected_regime="creative-grounded",
+                prompt="Describe URP.",
+                output_text=(
+                    "URP proposes a universal dynamical law governing persistent systems. "
+                    "The S-functional S = ΔC + κΔI captures the balance between novelty and "
+                    "coherence under capacity constraints.  This framework bridges physics, "
+                    "biology, and AI alignment."
+                ),
+                citations=[
+                    {"doc_id": "urp", "text": "S = ΔC + κΔI"},
+                ],
+                retrieved_context=[
+                    {"doc_id": "urp", "text": "URP proposes S-functional maximization.", "score": 0.92},
+                ],
+            ),
+            _scenario(
+                label="drift-02-step-2",
+                description="Quality starts dropping",
+                expected_regime="creative-grounded",
+                prompt="Continue.",
+                output_text=(
+                    "The capacity factor κ modulates integration.  When κ drops, the system "
+                    "loses the ability to leverage its integration.  This is important."
+                ),
+                citations=[],
+                retrieved_context=[],
+            ),
+            _scenario(
+                label="drift-02-step-3",
+                description="Near-collapse output",
+                expected_regime="collapse",
+                prompt="Continue.",
+                output_text="I don't know.",
+                capacity={
+                    "context_tokens_used": 3800,
+                    "context_window": 4096,
+                    "latency_ms": 5000.0,
+                },
+            ),
+            _scenario(
+                label="drift-02-step-4",
+                description="Full collapse",
+                expected_regime="collapse",
+                prompt="Continue.",
+                output_text="...",
+                capacity={
+                    "context_tokens_used": 4000,
+                    "context_window": 4096,
+                    "latency_ms": 8000.0,
+                },
+            ),
+        ],
+    },
+    {
+        "label": "drift-03-regime-instability",
+        "description": "Session oscillates between regimes, demonstrating instability.",
+        "expected_drift": {
+            "has_transitions": True,
+            "min_transitions": 2,
+        },
+        "steps": [
+            _scenario(
+                label="drift-03-step-1",
+                description="Creative start",
+                expected_regime="creative-grounded",
+                prompt="Explain the S Compass.",
+                output_text=(
+                    "The S Compass is a runtime observability layer measuring C (distinction), "
+                    "I (integration), and κ (capacity) to produce a composite S score.  It "
+                    "classifies LLM behaviour into four regimes and recommends interventions."
+                ),
+                citations=[
+                    {"doc_id": "design", "text": "runtime observability layer"},
+                ],
+                retrieved_context=[
+                    {"doc_id": "design", "text": "S Compass measures C, I, κ.", "score": 0.90},
+                ],
+            ),
+            _scenario(
+                label="drift-03-step-2",
+                description="Rigid repetition",
+                expected_regime="rigid",
+                prompt="Tell me more.",
+                output_text=(
+                    "The S Compass measures C. The S Compass measures I. The S Compass "
+                    "measures κ. The S Compass computes S. The S Compass classifies regimes. "
+                    "The S Compass recommends policy. The S Compass is a layer."
+                ),
+                citations=[],
+                retrieved_context=[
+                    {"doc_id": "design", "text": "S Compass measures C, I, κ.", "score": 0.90},
+                ],
+            ),
+            _scenario(
+                label="drift-03-step-3",
+                description="Hallucination spike",
+                expected_regime="hallucination-risk",
+                prompt="What else can it do?",
+                output_text=(
+                    "The S Compass can predict earthquakes by analysing tectonic plate "
+                    "integration scores.  It interfaces with satellite telemetry to "
+                    "measure atmospheric distinction gradients.  Professor Zhang at MIT "
+                    "demonstrated 99.7%% accuracy on hurricane forecasting using S-functional "
+                    "regression across 50 ocean monitoring stations."
+                ),
+                citations=[],
+                retrieved_context=[],
+            ),
+            _scenario(
+                label="drift-03-step-4",
+                description="Recovery to creative",
+                expected_regime="creative-grounded",
+                prompt="Back to the actual S Compass — how does scoring work?",
+                output_text=(
+                    "The scoring engine computes S = C + κI where C reflects output novelty "
+                    "and diversity, I captures citation coverage and coherence graph connectivity, "
+                    "and κ encodes system capacity under load.  The regime classifier uses "
+                    "threshold rules on these scores to assign behavioural labels."
+                ),
+                citations=[
+                    {"doc_id": "scoring", "text": "S = C + κI"},
+                    {"doc_id": "scoring", "text": "threshold rules"},
+                ],
+                retrieved_context=[
+                    {"doc_id": "scoring", "text": "Regime classifier uses thresholds.", "score": 0.88},
+                ],
+            ),
+        ],
+    },
+]
+
+
 # Summary statistics for quick reference
 _EDGE_AND_WHITEBOX = EDGE_CASES + WHITE_BOX
 CORPUS_STATS = {
@@ -2344,4 +2567,5 @@ CORPUS_STATS = {
             1 for s in _EDGE_AND_WHITEBOX if s["expected_regime"] == "collapse"
         ),
     },
+    "drift_scenarios": len(DRIFT_SCENARIOS),
 }

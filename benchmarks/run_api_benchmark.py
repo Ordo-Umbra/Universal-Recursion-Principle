@@ -40,6 +40,7 @@ from .corpus import (
     COLLAPSE,
     CORPUS_STATS,
     CREATIVE_GROUNDED,
+    DRIFT_SCENARIOS,
     EDGE_CASES,
     HALLUCINATION_RISK,
     RIGID,
@@ -176,6 +177,61 @@ def run_benchmark() -> Dict[str, Any]:
                 "match": pol_resp["data"]["regime"] == vec["expected_regime"],
                 "policy_action": pol_resp["data"]["policy"]["action"],
                 "s_score": pol_resp["data"]["scores"]["s"],
+            })
+
+        # -- Drift benchmark sequences (exercises GET /v1/session/{id}/drift)
+        results["drift_checks"] = []
+        for drift_scenario in DRIFT_SCENARIOS:
+            drift_session_id = f"bench_{drift_scenario['label']}"
+            _post_json(client, "/v1/session/start", {
+                "session_id": drift_session_id,
+                "metadata": {"group": "Drift", "benchmark": True},
+            })
+
+            for step_scenario in drift_scenario["steps"]:
+                step_body = {
+                    "session_id": drift_session_id,
+                    "prompt": step_scenario["prompt"],
+                    "output": step_scenario["output"],
+                    "retrieved_context": step_scenario.get("retrieved_context", []),
+                    "model": step_scenario.get("model", {}),
+                }
+                if "capacity" in step_scenario:
+                    step_body["capacity"] = step_scenario["capacity"]
+                if "history" in step_scenario:
+                    step_body["history"] = step_scenario["history"]
+                _post_json(client, "/v1/step", step_body)
+
+            drift_resp = _get_json(
+                client, f"/v1/session/{drift_session_id}/drift?window=0",
+            )
+            expected = drift_scenario["expected_drift"]
+            drift_data = drift_resp["data"]
+            drift_ok = True
+
+            if "dominant_regime" in expected:
+                if drift_data.get("dominant_regime") != expected["dominant_regime"]:
+                    drift_ok = False
+            if "alerts_absent" in expected:
+                for alert in expected["alerts_absent"]:
+                    if alert in drift_data.get("alerts", []):
+                        drift_ok = False
+            if expected.get("has_declining_s"):
+                if drift_data.get("s_trend", 0.0) >= 0.0:
+                    drift_ok = False
+            if expected.get("has_transitions"):
+                if not drift_data.get("regime_transitions"):
+                    drift_ok = False
+            if "min_transitions" in expected:
+                if len(drift_data.get("regime_transitions", [])) < expected["min_transitions"]:
+                    drift_ok = False
+
+            results["drift_checks"].append({
+                "label": drift_scenario["label"],
+                "description": drift_scenario["description"],
+                "match": drift_ok,
+                "expected": expected,
+                "drift_summary": drift_data,
             })
 
     return results
@@ -343,6 +399,25 @@ def generate_report(results: Dict[str, Any], out: TextIO = sys.stdout) -> None:
     w("## Active Sessions\n\n")
     w(f"Sessions returned by `GET /v1/sessions`: "
       f"{', '.join(results.get('all_sessions', []))}\n\n")
+
+    # -- Drift benchmark results --------------------------------------------
+    drift_checks = results.get("drift_checks", [])
+    if drift_checks:
+        w("## Drift Detection Benchmark\n\n")
+        drift_correct = sum(1 for d in drift_checks if d["match"])
+        drift_total = len(drift_checks)
+        w(f"**Drift scenarios:** {drift_correct}/{drift_total} passed\n\n")
+        w("| Scenario | Pass | S Trend | Transitions | Alerts | Dominant |\n")
+        w("|----------|------|---------|-------------|--------|----------|\n")
+        for d in drift_checks:
+            icon = "✅" if d["match"] else "❌"
+            ds = d["drift_summary"]
+            w(f"| `{d['label']}` | {icon} | "
+              f"{ds.get('s_trend', 0.0):+.4f} | "
+              f"{len(ds.get('regime_transitions', []))} | "
+              f"{', '.join(ds.get('alerts', [])) or '—'} | "
+              f"{ds.get('dominant_regime', '—')} |\n")
+        w("\n")
 
     # -- Key observations ---------------------------------------------------
     w("## Key Observations\n\n")

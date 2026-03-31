@@ -3,7 +3,7 @@ api.py
 
 REST API for S Compass (Design-doc §8).
 
-Implements the five original endpoints plus two new ones:
+Implements the five original endpoints plus three new ones:
 
 * ``POST /v1/session/start``       — start a traced session (§8.1)
 * ``POST /v1/step``                — submit + score an inference step (§8.2)
@@ -12,6 +12,7 @@ Implements the five original endpoints plus two new ones:
 * ``POST /v1/policy/evaluate``     — standalone policy evaluation (§8.5)
 * ``GET  /v1/sessions``            — list all active session IDs (new)
 * ``GET  /v1/session/<id>/window`` — rolling-window score statistics (new)
+* ``GET  /v1/session/<id>/drift``  — drift detection summary (§4.9, new)
 
 The module exposes :func:`create_app` which returns a Flask application
 wired to a shared :class:`SCompassGateway`.
@@ -192,6 +193,21 @@ def create_app(gateway: Optional[SCompassGateway] = None) -> Flask:
         except (TypeError, ValueError):
             return jsonify({"ok": False, "error": "window must be an integer"}), 400
         result = gw.store.rolling_window_stats(session_id, window=window)
+        if result is None:
+            return jsonify({"ok": False, "error": "session not found"}), 404
+        result["ok"] = True
+        return jsonify(result), 200
+
+    # -----------------------------------------------------------------
+    # NEW  GET /v1/session/<session_id>/drift  — drift detection (§4.9)
+    # -----------------------------------------------------------------
+    @app.route("/v1/session/<session_id>/drift", methods=["GET"])
+    def session_drift(session_id: str) -> tuple:
+        try:
+            window = int(request.args.get("window", 10))
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "window must be an integer"}), 400
+        result = gw.get_drift_summary(session_id, window=window)
         if result is None:
             return jsonify({"ok": False, "error": "session not found"}), 404
         result["ok"] = True

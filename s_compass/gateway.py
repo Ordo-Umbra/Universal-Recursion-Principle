@@ -215,3 +215,22 @@ class SCompassGateway:
     def get_trace_graph(self, trace_id: str) -> Optional[Dict[str, Any]]:
         """Return the coherence graph analysis for a trace (Design-doc §8.4)."""
         return self._trace_graphs.get(trace_id)
+
+    def get_drift_summary(
+        self,
+        session_id: str,
+        window: int = 10,
+    ) -> Optional[Dict[str, Any]]:
+        """Return session-level drift detection summary (Design-doc §4.9).
+
+        Analyses score trends, regime transitions, and generates alerts.
+        """
+        return self.store.drift_summary(session_id, window=window)
+
+    def get_regime_transitions(
+        self,
+        session_id: str,
+        window: int = 0,
+    ) -> Optional[list]:
+        """Return the list of regime transitions for a session."""
+        return self.store.regime_transitions(session_id, window=window)
