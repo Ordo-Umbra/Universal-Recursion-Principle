@@ -109,6 +109,7 @@ Just run `pip install -r requirements.txt` once, then:
 | **S-Landscape Explorer** | `Sims/s_landscape_explorer.py` | Interactive intuition pump for gradient ascent on an S-shaped landscape | `python Sims/s_landscape_explorer.py` |
 | **Biology URP Demon** | `Sims/biology_urp.py` | Minimal-genome cell and enzyme Maxwell's demons maximizing S; validates the Sagawa–Ito information bound ΔI ≤ κ·ΔC | `python Sims/biology_urp.py` |
 | **Layerwise Transformer S** | `Sims/layerwise_transformer.py` | Tracks C, I, κ, and S layer-by-layer through a transformer, validating the S^(l+1) ≥ S^(l) hypothesis from Transformer-Dynamics.md §6 | `python Sims/layerwise_transformer.py` |
+| **Real Transformer Layerwise S** | `Sims/real_transformer_layerwise.py` | Loads GPT-2 and extracts actual per-layer attention and logits to compute C, I, κ, S — validates the §6 hypothesis on a real trained model (requires `pip install torch transformers`) | `python Sims/real_transformer_layerwise.py` |
 
 Every sim saves its plot automatically and prints a clear summary. Clone, run, reproduce — no setup headaches.
 
@@ -269,7 +270,7 @@ print(policy.parameters)    # includes 'stabilise': True when regime is unstable
 ### Running Tests
 
 ```bash
-# Full test suite (all 409 tests including white-box, gray-box, drift, benchmark, and structural metrics tests)
+# Full test suite (all 422 tests including white-box, gray-box, drift, benchmark, and structural metrics tests)
 python -m pytest -v
 
 # Individual test modules
