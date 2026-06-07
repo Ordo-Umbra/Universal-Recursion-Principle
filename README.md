@@ -61,6 +61,7 @@ The README is intended to be the main navigation layer. The documents below are 
 |----------|------------------|--------------|
 | **[Docs/manifesto.md](Docs/manifesto.md)** | Mission statement | Explains the civilizational aim: shift our optimization targets away from engagement, profit, and narrow reward toward recursive understanding that does not self-terminate. |
 | **[Docs/Universal-Recursion-Principle.md](Docs/Universal-Recursion-Principle.md)** | Main framework | The best single end-to-end walkthrough of URP, linking incompleteness, field dynamics, biology, cognition, and AI objective design. |
+| **[Docs/Glossary.md](Docs/Glossary.md)** | Symbol reference | Defines C, I, κ, S, β, G across every layer (logic, field theory, information theory, graph, transformer, S Compass) and disambiguates the overloaded symbols. |
 | **[Docs/Transformer-Dynamics.md](Docs/Transformer-Dynamics.md)** | AI / transformer mapping | Translates the S-functional into transformer terms using predictive entropy, attention structure, and capacity-sensitive phase regimes. |
 | **[Docs/Level-and-Delta-Forms.md](Docs/Level-and-Delta-Forms.md)** | Theory ↔ code bridge | Reconciles the delta form `S = ΔC + κΔI` (used by the theory) with the level form `S = C + κI` (used by the S Compass code), and documents the state vs. trajectory regime vocabularies. |
 | **[Docs/S-Compass-System-Design.md](Docs/S-Compass-System-Design.md)** | AI systems architecture | Turns the S Compass idea into a concrete runtime observability and control design for LLMs, RAG systems, and agents. |
