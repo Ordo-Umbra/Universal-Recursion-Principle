@@ -73,12 +73,14 @@ The README is intended to be the main navigation layer. The documents below are 
 | **[Docs/Energy is the Echo](Docs/Energy%20is%20the%20Echo.txt)** | Thermodynamic reinterpretation | Inverts the usual story: energy becomes the observable echo of movement toward higher S, rather than the primary causal substrate. |
 | **[Docs/Life as a Universal Recursion Engine](Docs/Life%20as%20a%20Universal%20Recursion%20Engine.txt)** | Biology branch | Applies URP to biological Maxwell’s demons, enzyme memory, and life as organized information flow against thermodynamic resistance. |
 | **[Docs/Fusion_URP.txt](Docs/Fusion_URP.txt)** | Applied engineering branch | Frames fusion as a coherence-engineering problem, proposing high-κ plasma structure as an alternative to brute-force thermal escalation. |
+| **[Docs/The-Range.md](Docs/The-Range.md)** | Ethics / identity branch | Recasts being as a high-dimensional space of distinction and integration with a floor and no summit; introduces *reach* and *care* as the two axes of growth and the verdict that reach without care is malignant, not advanced. |
 
 ## How the pieces fit together
 
 - The **manifesto** states the practical objective: change the attractor that human and machine systems optimize for.
-- The **main framework** provides the shared mathematical language for that objective.
-- The **focused branches** test that language in specific domains: gauge physics, electromagnetism, relativity, geometry, biology, and fusion.
+- The **main framework** provides the shared mathematical language for that objective, with the [glossary](Docs/Glossary.md) and the [level/delta bridge](Docs/Level-and-Delta-Forms.md) as references.
+- The **focused branches** test that language in specific domains: gauge physics, electromagnetism, relativity, geometry, biology, fusion, and — for minds and values — [The Range](Docs/The-Range.md).
+- The **S Compass** is the framework's flagship *working* artifact: a runtime observability and control layer that estimates C, I, κ, and S live from AI system traces, turning the theory into a tested, runnable diagnostic (~400 passing tests, an 82-scenario benchmark, and a REST API).
 - The **simulations** make parts of the theory executable, inspectable, and falsifiable.
 
 ## Getting Started
