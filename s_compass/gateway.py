@@ -19,6 +19,7 @@ from .store import EvaluationStore
 from .telemetry import normalize_event
 from .extraction import extract_and_link
 from .graph import analyse_coherence
+from .s_engine import SEngine
 
 
 class SCompassGateway:
@@ -32,10 +33,20 @@ class SCompassGateway:
         print(result["scores"], result["regime"], result["policy"])
     """
 
-    def __init__(self, store: Optional[EvaluationStore] = None) -> None:
+    def __init__(
+        self,
+        store: Optional[EvaluationStore] = None,
+        track_recursion: bool = False,
+        recursion_kappa: Optional[float] = None,
+    ) -> None:
         self.store = store or EvaluationStore()
         # trace_id → coherence analysis dict (Design-doc §8.4)
         self._trace_graphs: Dict[str, Dict[str, Any]] = {}
+        # Opt-in delta-form recursion tracking (ΔS = ΔC + κ ΔI).
+        self.track_recursion = track_recursion
+        self._recursion_kappa = recursion_kappa
+        # session_id → SEngine (one per session, since deltas are per-session)
+        self._engines: Dict[str, SEngine] = {}
 
     # -- session management -------------------------------------------------
 
@@ -46,6 +57,9 @@ class SCompassGateway:
     ) -> Dict[str, object]:
         """Start a new traced session (Design-doc §8.1)."""
         self.store.start_session(session_id, metadata)
+        # Fresh recursion state for a (re)started session.
+        if self.track_recursion:
+            self._engines[session_id] = SEngine(kappa=self._recursion_kappa)
         evt = normalize_event(
             "session.started",
             session_id=session_id,
@@ -169,6 +183,24 @@ class SCompassGateway:
         snapshot: ScoreSnapshot = score_step(step)
         self.store.add_score(session_id, snapshot)
 
+        # 5b. Delta-form recursion (opt-in): ΔS = ΔC + κ ΔI.  Reuses the
+        #     snapshot above so distinction/integration are defined exactly
+        #     once across the level and delta forms.
+        recursion: Optional[Dict[str, object]] = None
+        if self.track_recursion:
+            engine = self._engines.setdefault(
+                session_id, SEngine(kappa=self._recursion_kappa)
+            )
+            rec = engine.assess_snapshot(snapshot)
+            recursion = {
+                "delta_c": rec.delta_c,
+                "delta_i": rec.delta_i,
+                "delta_s": rec.delta_s,
+                "s_level": rec.s_level,
+                "regime": rec.regime,
+                "is_initial": rec.is_initial,
+            }
+
         # 6. Policy
         policy: PolicyAction = evaluate_policy(snapshot)
         self.store.add_policy(session_id, policy)
@@ -188,7 +220,7 @@ class SCompassGateway:
             self.store.add_event(session_id, pol_evt)
 
         # 7. Return
-        return {
+        result: Dict[str, object] = {
             "ok": True,
             "scores": {
                 "c": snapshot.c,
@@ -201,6 +233,9 @@ class SCompassGateway:
             "mode": step.mode,
             "policy": {"action": policy.action, "reason": policy.reason},
         }
+        if recursion is not None:
+            result["recursion"] = recursion
+        return result
 
     # -- read endpoints -----------------------------------------------------
 
