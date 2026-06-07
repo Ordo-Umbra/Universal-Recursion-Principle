@@ -3,6 +3,15 @@
 ## Abstract
 This document formalizes the Universal Recursion Principle (URP) within the mathematical architecture of a standard transformer. By mapping Distinction Capacity ($C$) to predictive entropy and Integration Capacity ($I$) to attention structure, we define a computable S-functional ($S = C + \kappa I$) that tracks a network's ability to maintain and resolve competing representations.
 
+> **Note on form.** The main framework writes the S-functional in *delta* form,
+> $S = \Delta C + \kappa\,\Delta I$ (growth in distinction and integration). This
+> document uses the *level* form $S = C + \kappa I$ (the absolute amounts) because
+> a transformer layer exposes levels — entropy, attention structure — directly,
+> and reintroduces the deltas in §6 as layer-to-layer changes. The two forms are
+> the same functional, with the level form the state and the delta form its
+> change over time. See [Level-and-Delta-Forms.md](Level-and-Delta-Forms.md) for
+> the full reconciliation and the state vs. trajectory regime vocabularies.
+
 ---
 
 ## 1. Setup: Transformer as a Layered Dynamical System
