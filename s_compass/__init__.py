@@ -45,6 +45,7 @@ from .estimators_graybox import (
     signal_coverage,
 )
 from .scoring import classify_regime, score_step, score_step_dict
+from .s_engine import RecursionMetrics, SEngine, classify_recursion
 from .policy import evaluate as evaluate_policy
 from .policy import evaluate_with_drift
 from .store import EvaluationStore
@@ -87,6 +88,10 @@ __all__ = [
     "classify_regime",
     "score_step",
     "score_step_dict",
+    # Recursion (delta-form S-Engine)
+    "SEngine",
+    "RecursionMetrics",
+    "classify_recursion",
     # Policy
     "evaluate_policy",
     "evaluate_with_drift",
