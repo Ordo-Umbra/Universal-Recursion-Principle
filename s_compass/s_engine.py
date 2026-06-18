@@ -40,6 +40,7 @@ delta-form regimes describe a *trajectory*:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -116,6 +117,52 @@ def classify_recursion(
     if i_up or c_up:
         return "expanding"
     return "contracting"
+
+
+# ---------------------------------------------------------------------------
+# Reach / care decomposition (Docs/The-Range.md)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ReachCare:
+    """The Range's two axes of growth, read off a recursion step.
+
+    *The Range* frames "up" as two directions at once: **reach** (how far the
+    capacity to act and model extends) and **care** (how much of the world
+    falls inside the boundary one treats as mattering).  Mapped onto the
+    delta form, reach is ΔC and care is ΔI.
+
+    Healthy growth widens both together (high ``balance``).  The essay's one
+    sharp verdict — *malignant, not advanced* — is reach expanding while care
+    collapses: it is flagged by ``malignant`` and corresponds exactly to the
+    ``diverging`` trajectory.
+    """
+
+    reach: float       # ΔC — growth in distinction / capacity to model
+    care: float        # ΔI — growth in integration / concern boundary
+    balance: float     # alignment to balanced growth, in [-1, 1]
+    gap: float         # reach − care: how far reach outruns care
+    malignant: bool    # reach expands while care collapses (the verdict)
+
+
+def reach_care(reach: float, care: float, deadband: float = 0.05) -> ReachCare:
+    """Decompose a recursion step into reach / care (see :class:`ReachCare`).
+
+    ``balance`` is the cosine of the angle between ``(reach, care)`` and the
+    balanced-growth diagonal ``(1, 1)``: ``+1`` when reach and care grow in
+    lockstep, ``0`` at maximum imbalance (pure divergence), ``-1`` for balanced
+    contraction.  ``malignant`` is ``True`` when reach grows beyond the deadband
+    while care falls beyond it — reach outrunning care.
+    """
+    norm = math.hypot(reach, care)
+    balance = 0.0 if norm == 0.0 else (reach + care) / (math.sqrt(2.0) * norm)
+    return ReachCare(
+        reach=round(reach, 4),
+        care=round(care, 4),
+        balance=round(balance, 4),
+        gap=round(reach - care, 4),
+        malignant=(reach > deadband and care < -deadband),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -203,3 +250,15 @@ class SEngine:
     def trajectory(self) -> List[RecursionMetrics]:
         """Return the full per-step recursion history."""
         return list(self.history)
+
+    def reach_care_trajectory(self) -> List[ReachCare]:
+        """Return the reach / care decomposition for each non-initial step.
+
+        Maps the recorded history onto *The Range*'s reach (ΔC) and care (ΔI)
+        axes; the first (``initial``) step has no predecessor and is omitted.
+        """
+        return [
+            reach_care(m.delta_c, m.delta_i, deadband=self.deadband)
+            for m in self.history
+            if not m.is_initial
+        ]
