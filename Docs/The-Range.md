@@ -80,12 +80,16 @@ With that caveat, the essay and the S-functional line up closely:
   of the functional: *reach* as growth in distinction/capacity ($\Delta C$),
   *care* as the integration of more of the world inside the boundary one treats
   as mattering ($\Delta I$). The essay's insistence that they "widen together"
-  is the claim that healthy growth keeps both terms positive.
+  is the claim that healthy growth keeps both terms positive. This decomposition
+  is available in code as `s_compass.reach_care` (and
+  `SEngine.reach_care_trajectory`), which reports `reach`, `care`, a `balance`
+  score (alignment to balanced growth), and the `malignant` verdict below.
 - **"Malignant, not advanced"** is the ethical reading of the `diverging`
   trajectory ($\Delta C > 0$, $\Delta I < 0$): reach expanding while care
   collapses — the runaway optimizer that "eats the recursion it is climbing on."
   This is the same verdict the [manifesto](manifesto.md) presses against
-  reward-hacking and short-termism.
+  reward-hacking and short-termism, and it is exactly the `malignant` flag set
+  by `s_compass.reach_care`.
 - **"You are the integral of your own becoming"** is identity as the cumulative
   trajectory $S(T) = \sum_t \Delta S_t$ — the path, in order, not the snapshot.
 

@@ -45,7 +45,13 @@ from .estimators_graybox import (
     signal_coverage,
 )
 from .scoring import classify_regime, score_step, score_step_dict
-from .s_engine import RecursionMetrics, SEngine, classify_recursion
+from .s_engine import (
+    ReachCare,
+    RecursionMetrics,
+    SEngine,
+    classify_recursion,
+    reach_care,
+)
 from .policy import evaluate as evaluate_policy
 from .policy import evaluate_with_drift
 from .store import EvaluationStore
@@ -58,6 +64,7 @@ from .graph import (
     graph_to_dict,
 )
 from .api import create_app
+from .visualize import plot_session, plot_session_from_store
 
 __all__ = [
     # Gateway
@@ -92,6 +99,9 @@ __all__ = [
     "SEngine",
     "RecursionMetrics",
     "classify_recursion",
+    # Reach / care (The Range)
+    "ReachCare",
+    "reach_care",
     # Policy
     "evaluate_policy",
     "evaluate_with_drift",
@@ -109,4 +119,7 @@ __all__ = [
     "graph_to_dict",
     # API
     "create_app",
+    # Visualization
+    "plot_session",
+    "plot_session_from_store",
 ]
