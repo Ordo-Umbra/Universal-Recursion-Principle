@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from .schemas import Event, PolicyAction, ScoreSnapshot
+from .s_engine import SEngine
 
 
 @dataclass
@@ -108,9 +109,13 @@ class EvaluationStore:
         Returns
         -------
         dict
-            ``{"session_id", "window", "count", "stats": {"c": {...}, ...}}``
-            where each field dict has keys ``mean``, ``std``, ``min``, ``max``.
-            Returns ``None`` if the session does not exist.
+            ``{"session_id", "window", "count", "stats", "cumulative_delta_s"}``.
+            ``stats`` maps each field (``c``, ``i``, ``kappa``, ``s``) to a dict
+            with keys ``mean``, ``std``, ``min``, ``max``.  When the window holds
+            at least two snapshots, ``stats`` additionally carries the delta-form
+            blocks ``delta_c``, ``delta_i``, ``delta_s`` (the per-step recursion),
+            and ``cumulative_delta_s`` is the recursion integral S(T) = Σ ΔSₜ over
+            the window.  Returns ``None`` if the session does not exist.
         """
         rec = self._sessions.get(session_id)
         if rec is None:
@@ -135,20 +140,40 @@ class EvaluationStore:
                 "max": round(max(vals), 4),
             }
 
+        stats = {
+            "c": _field_stats([s.c for s in snaps]),
+            "i": _field_stats([s.i for s in snaps]),
+            "kappa": _field_stats([s.kappa for s in snaps]),
+            "s": _field_stats([s.s for s in snaps]),
+        }
+
+        # Delta-form recursion stats over the window (needs ≥ 2 snapshots so
+        # at least one ΔС/ΔI/ΔS step exists).  Parallels the level-form blocks.
+        cumulative_delta_s = 0.0
+        if n >= 2:
+            deltas = [m for m in self._recursion_series(snaps) if not m.is_initial]
+            stats["delta_c"] = _field_stats([m.delta_c for m in deltas])
+            stats["delta_i"] = _field_stats([m.delta_i for m in deltas])
+            stats["delta_s"] = _field_stats([m.delta_s for m in deltas])
+            cumulative_delta_s = round(sum(m.delta_s for m in deltas), 4)
+
         return {
             "session_id": session_id,
             "window": window,
             "count": n,
-            "stats": {
-                "c": _field_stats([s.c for s in snaps]),
-                "i": _field_stats([s.i for s in snaps]),
-                "kappa": _field_stats([s.kappa for s in snaps]),
-                "s": _field_stats([s.s for s in snaps]),
-            },
+            "stats": stats,
+            "cumulative_delta_s": cumulative_delta_s,
         }
 
     def session_summary(self, session_id: str) -> Optional[Dict[str, object]]:
-        """Return an aggregate summary for a session (Design-doc §8.3)."""
+        """Return an aggregate summary for a session (Design-doc §8.3).
+
+        Alongside the level-form aggregates (``regime_counts``, ``avg_scores``,
+        ``mode_counts``, ``avg_confidence``) the summary carries the delta-form
+        recursion view: ``trajectory_counts`` (mirroring ``regime_counts``),
+        ``avg_delta_s``, ``cumulative_delta_s`` (the session's recursion integral
+        S(T) = Σ ΔSₜ), and ``current_trajectory``.
+        """
         rec = self._sessions.get(session_id)
         if rec is None:
             return None
@@ -160,6 +185,10 @@ class EvaluationStore:
                 "avg_scores": {},
                 "mode_counts": {},
                 "avg_confidence": None,
+                "trajectory_counts": {},
+                "avg_delta_s": None,
+                "cumulative_delta_s": 0.0,
+                "current_trajectory": None,
             }
         regime_counts: Dict[str, int] = {}
         mode_counts: Dict[str, int] = {}
@@ -173,6 +202,21 @@ class EvaluationStore:
             s_vals.append(snap.s)
             conf_vals.append(snap.confidence)
         n = len(rec.scores)
+
+        # Delta-form recursion aggregated over the whole session.  The
+        # trajectory counts mirror regime_counts; the delta aggregates mirror
+        # avg_scores.  Both come from the shared SEngine series.
+        series = self._recursion_series(rec.scores)
+        deltas = [m for m in series if not m.is_initial]
+        trajectory_counts: Dict[str, int] = {}
+        for m in deltas:
+            trajectory_counts[m.regime] = trajectory_counts.get(m.regime, 0) + 1
+        cumulative_delta_s = round(sum(m.delta_s for m in deltas), 4)
+        avg_delta_s = (
+            round(sum(m.delta_s for m in deltas) / len(deltas), 4) if deltas else None
+        )
+        current_trajectory = series[-1].regime
+
         return {
             "session_id": session_id,
             "step_count": n,
@@ -185,6 +229,10 @@ class EvaluationStore:
             },
             "mode_counts": mode_counts,
             "avg_confidence": round(sum(conf_vals) / n, 4),
+            "trajectory_counts": trajectory_counts,
+            "avg_delta_s": avg_delta_s,
+            "cumulative_delta_s": cumulative_delta_s,
+            "current_trajectory": current_trajectory,
         }
 
     # -- drift detection & regime transitions (Design-doc §4.9) -------------
@@ -208,6 +256,62 @@ class EvaluationStore:
         if denom == 0.0:
             return 0.0
         return (n * sum_xy - sum_x * sum_y) / denom
+
+    @staticmethod
+    def _recursion_series(snaps: List[ScoreSnapshot]) -> List[Any]:
+        """Run the delta-form engine over *snaps* and return per-step metrics.
+
+        Reuses :class:`~s_compass.s_engine.SEngine` so the drift layer, the
+        session summary, the rolling window, and the gateway's per-step
+        recursion tracking all share exactly one definition of ΔC, ΔI, ΔS,
+        and the trajectory regime.  The first entry is always ``initial``
+        (no predecessor to difference against).
+        """
+        engine = SEngine()
+        return [engine.assess_snapshot(s) for s in snaps]
+
+    @classmethod
+    def _recursion_metrics(cls, snaps: List[ScoreSnapshot]) -> Dict[str, Any]:
+        """Aggregate delta-form recursion metrics over *snaps*.
+
+        The level-form slopes (``s_trend`` etc.) are a smoothed proxy for the
+        average ΔS; these metrics are the explicit per-step recursion the slope
+        approximates.
+
+        Returns the per-step ``trajectory`` (the first entry is ``"initial"``),
+        the mean ΔC / ΔI / ΔS, the cumulative ΔS over the window (the recursion
+        integral ``S(T) = Σ ΔSₜ``), and the dominant / current trajectory.
+        """
+        metrics = cls._recursion_series(snaps)
+        trajectory = [m.regime for m in metrics]
+
+        # Steps that actually have a predecessor to difference against.
+        deltas = [m for m in metrics if not m.is_initial]
+        if not deltas:
+            return {
+                "delta_c_mean": 0.0,
+                "delta_i_mean": 0.0,
+                "delta_s_mean": 0.0,
+                "cumulative_delta_s": 0.0,
+                "dominant_trajectory": None,
+                "current_trajectory": metrics[-1].regime if metrics else None,
+                "trajectory": trajectory,
+            }
+
+        ds = [m.delta_s for m in deltas]
+        counts: Dict[str, int] = {}
+        for m in deltas:
+            counts[m.regime] = counts.get(m.regime, 0) + 1
+
+        return {
+            "delta_c_mean": round(sum(m.delta_c for m in deltas) / len(deltas), 4),
+            "delta_i_mean": round(sum(m.delta_i for m in deltas) / len(deltas), 4),
+            "delta_s_mean": round(sum(ds) / len(ds), 4),
+            "cumulative_delta_s": round(sum(ds), 4),
+            "dominant_trajectory": max(counts, key=counts.get),
+            "current_trajectory": deltas[-1].regime,
+            "trajectory": trajectory,
+        }
 
     def regime_transitions(
         self,
@@ -269,9 +373,18 @@ class EvaluationStore:
         -------
         dict | None
             ``{"session_id", "window", "step_count", "s_trend", "c_trend",
-            "i_trend", "kappa_trend", "regime_transitions", "transition_rate",
-            "dominant_regime", "current_regime", "alerts"}``
+            "i_trend", "kappa_trend", "delta_c_mean", "delta_i_mean",
+            "delta_s_mean", "cumulative_delta_s", "trajectory",
+            "dominant_trajectory", "current_trajectory", "regime_transitions",
+            "transition_rate", "dominant_regime", "current_regime", "alerts"}``
             Returns ``None`` if the session does not exist.
+
+            The ``s_trend`` (level-form OLS slope) and ``delta_s_mean``
+            (delta-form mean per-step ΔS) are two views of the same trend: the
+            slope smooths, the delta form gives the explicit recursion.  The
+            ``*_trajectory`` fields and the ``recursion_diverging`` /
+            ``recursion_contracting`` alerts are the delta-form early warnings
+            that fire before the slope-based ``declining_s`` threshold trips.
         """
         rec = self._sessions.get(session_id)
         if rec is None:
@@ -288,6 +401,13 @@ class EvaluationStore:
                 "c_trend": 0.0,
                 "i_trend": 0.0,
                 "kappa_trend": 0.0,
+                "delta_c_mean": 0.0,
+                "delta_i_mean": 0.0,
+                "delta_s_mean": 0.0,
+                "cumulative_delta_s": 0.0,
+                "trajectory": [],
+                "dominant_trajectory": None,
+                "current_trajectory": None,
                 "regime_transitions": [],
                 "transition_rate": 0.0,
                 "dominant_regime": None,
@@ -295,11 +415,15 @@ class EvaluationStore:
                 "alerts": [],
             }
 
-        # Score trends (OLS slope per step)
+        # Score trends (OLS slope per step) — the level-form smoothed view.
         s_trend = round(self._linear_slope([s.s for s in snaps]), 4)
         c_trend = round(self._linear_slope([s.c for s in snaps]), 4)
         i_trend = round(self._linear_slope([s.i for s in snaps]), 4)
         kappa_trend = round(self._linear_slope([s.kappa for s in snaps]), 4)
+
+        # Delta-form recursion (ΔC, ΔI, ΔS and trajectory) — the explicit
+        # per-step view the slope above approximates.
+        rec = self._recursion_metrics(snaps)
 
         # Regime transitions
         transitions: List[Dict[str, Any]] = []
@@ -328,6 +452,15 @@ class EvaluationStore:
         if "declining_s" in alerts and current_regime == "hallucination-risk":
             alerts.append("hallucination_drift")
 
+        # Delta-form early warnings: fire on the instantaneous trajectory
+        # (one step earlier than the slope-based declining_s, which needs
+        # ≥ 3 points and a threshold crossing).  These never fire on a stable
+        # session, whose trajectory is "steady" or "expanding".
+        if rec["current_trajectory"] == "diverging":
+            alerts.append("recursion_diverging")
+        if rec["current_trajectory"] == "contracting":
+            alerts.append("recursion_contracting")
+
         return {
             "session_id": session_id,
             "window": window,
@@ -336,6 +469,13 @@ class EvaluationStore:
             "c_trend": c_trend,
             "i_trend": i_trend,
             "kappa_trend": kappa_trend,
+            "delta_c_mean": rec["delta_c_mean"],
+            "delta_i_mean": rec["delta_i_mean"],
+            "delta_s_mean": rec["delta_s_mean"],
+            "cumulative_delta_s": rec["cumulative_delta_s"],
+            "trajectory": rec["trajectory"],
+            "dominant_trajectory": rec["dominant_trajectory"],
+            "current_trajectory": rec["current_trajectory"],
             "regime_transitions": transitions,
             "transition_rate": transition_rate,
             "dominant_regime": dominant_regime,

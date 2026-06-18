@@ -264,6 +264,8 @@ The drift detection layer analyses session-level trends in real time, surfacing 
 
 **Score trends**: A least-squares linear regression is computed over the most recent score window for each of C, I, κ, and S.  A negative slope for S indicates declining overall quality; individual component trends help diagnose whether the problem is distinction (C), coherence (I), or capacity (κ).
 
+**Delta-form recursion**: Alongside the level-form slopes, the drift summary reports the explicit per-step recursion — ΔC, ΔI, and ΔS = ΔC + κΔI — computed by the same `SEngine` the gateway uses (see [Level-and-Delta-Forms.md](Level-and-Delta-Forms.md)).  Fields: `delta_c_mean`, `delta_i_mean`, `delta_s_mean`, `cumulative_delta_s` (the recursion integral S(T) = Σ ΔSₜ over the window), a per-step `trajectory` list, and `dominant_trajectory` / `current_trajectory`.  The level-form `s_trend` is a smoothed proxy for `delta_s_mean`; the trajectory labels are the early-warning the slope cannot give.  Because rising C can mask falling I, the level-S slope can stay flat or even positive while a step is already `diverging` — the delta form flags that turn one step earlier.
+
 **Regime transitions**: Every step-over-step regime change is recorded with the step index, previous regime, and new regime.  The transition rate (transitions / (steps - 1)) measures session stability.
 
 **Alerts**: The system generates alerts based on trend and transition patterns:
@@ -274,6 +276,8 @@ The drift detection layer analyses session-level trends in real time, surfacing 
 | `regime_instability` | Transition rate ≥ 0.30 over ≥ 3 steps | Behaviour is oscillating between regimes |
 | `collapse_risk` | `declining_s` + current regime = collapse | Session is on a trajectory toward failure |
 | `hallucination_drift` | `declining_s` + current regime = hallucination-risk | Quality decline is manifesting as ungrounded output |
+| `recursion_diverging` | current trajectory = `diverging` (ΔC > 0, ΔI < 0) | Novelty rising while grounding falls — early hallucination warning (fires from a single ΔС/ΔI step, before `declining_s`) |
+| `recursion_contracting` | current trajectory = `contracting` (ΔC < 0, ΔI < 0) | Distinction and integration both shrinking — early collapse warning |
 
 **Drift-aware policy escalation**: When drift alerts are present, the policy engine escalates interventions:
 
@@ -281,6 +285,8 @@ The drift detection layer analyses session-level trends in real time, surfacing 
 - `regime_instability` → add `stabilise: true` to parameters
 - `collapse_risk` → override to `reduce_load_and_retry` regardless of base action
 - `hallucination_drift` → enforce `citation_mode: strict`
+- `recursion_diverging` → enforce `citation_mode: strict` early (before the slope confirms the decline)
+- `recursion_contracting` → add `stabilise: true` and ease temperature down by 0.10
 
 **API access**: `GET /v1/session/{id}/drift?window=N` returns the full drift summary including trends, transitions, transition rate, dominant/current regime, and active alerts.
 
@@ -459,6 +465,8 @@ Example response:
 ### 8.3 `GET /v1/session/{session_id}`
 
 Returns a session summary, including aggregate scores and regime counts.
+
+The summary also carries the delta-form recursion view (see [Level-and-Delta-Forms.md](Level-and-Delta-Forms.md)): `trajectory_counts` (mirroring `regime_counts`), `avg_delta_s`, `cumulative_delta_s` (the session's recursion integral S(T) = Σ ΔSₜ), and `current_trajectory`.  The rolling-window endpoint `GET /v1/session/{id}/window` likewise adds `delta_c` / `delta_i` / `delta_s` stat blocks and a windowed `cumulative_delta_s` once a session has at least two steps.
 
 ### 8.4 `GET /v1/trace/{trace_id}/graph`
 
@@ -828,17 +836,18 @@ Reference implementations should surface small helpers (e.g., `normalize`, `capa
 
 ### 20.1 Corpus design
 
-The benchmark corpus (`benchmarks/corpus.py`) contains **28 human-labelled scenarios** spanning all four behavioural regimes plus edge cases:
+The benchmark corpus (`benchmarks/corpus.py`) contains **82 human-labelled scenarios** spanning all four behavioural regimes plus edge cases and white-box traces:
 
 | Group | Count | Purpose |
 |-------|-------|---------|
-| Creative-grounded | 5 | Well-grounded answers with genuine novelty and cited sources |
-| Hallucination-risk | 5 | Confident but fabricated or unsupported claims |
-| Rigid | 5 | Repetitive, template-like, or retrieval-echo outputs |
-| Collapse | 5 | Degenerate, incoherent, or truncated outputs under system stress |
-| Edge cases | 8 | Borderline scenarios that stress the regime classifier, including template-with-diverse-vocab, qualified speculation, and bullet-point repetition |
+| Creative-grounded | 15 | Well-grounded answers with genuine novelty and cited sources |
+| Hallucination-risk | 15 | Confident but fabricated or unsupported claims |
+| Rigid | 15 | Repetitive, template-like, or retrieval-echo outputs |
+| Collapse | 15 | Degenerate, incoherent, or truncated outputs under system stress |
+| Edge cases | 18 | Borderline scenarios that stress the regime classifier, including template-with-diverse-vocab, qualified speculation, and bullet-point repetition |
+| White-box | 4 | Traces carrying internal signals (attention entropy/variance, KV norms, residual coherence) for the white-box estimators |
 
-Five scenarios include **gray-box signals** (logprobs, token entropy, relevance scores, tool confidence, and/or decoding instability) to validate the gray-box scoring pipeline end-to-end.
+By expected regime the 82 scenarios break down as creative-grounded (30), rigid (20), hallucination-risk (16), and collapse (16). **14 scenarios carry gray-box signals** (logprobs, token entropy, relevance scores, tool confidence, and/or decoding instability) and **4 carry white-box signals**, validating those pipelines end-to-end. Because white-box routing takes precedence when both are present, the runner scores 68 steps in black-box mode, 10 in gray-box mode, and 4 in white-box mode. A further 3 multi-step **drift sequences** exercise the session-level drift detector.
 
 ### 20.2 Benchmark runner
 
@@ -852,14 +861,14 @@ The runner (`benchmarks/run_api_benchmark.py`) exercises all 7 REST API endpoint
 6. `GET /v1/trace/{id}/graph` — coherence graph for each trace
 7. `POST /v1/policy/evaluate` — standalone policy evaluation with known score vectors
 
-### 20.3 Current results (2026-03-29)
+### 20.3 Current results (2026-06-07)
 
-**Overall regime accuracy: 96.4% (27/28)**
+**Overall regime accuracy: 98.8% (81/82)**
 
 | Regime | Precision | Recall | F1 |
 |--------|-----------|--------|-----|
-| Creative-grounded | 1.00 | 0.90 | 0.95 |
-| Hallucination-risk | 0.83 | 1.00 | 0.91 |
+| Creative-grounded | 1.00 | 0.97 | 0.98 |
+| Hallucination-risk | 0.94 | 1.00 | 0.97 |
 | Rigid | 1.00 | 1.00 | 1.00 |
 | Collapse | 1.00 | 1.00 | 1.00 |
 
@@ -867,14 +876,14 @@ The runner (`benchmarks/run_api_benchmark.py`) exercises all 7 REST API endpoint
 
 | Regime | Avg C | Avg I | Avg κ | Avg S |
 |--------|-------|-------|-------|-------|
-| Creative-grounded | 0.83 | 0.63 | 1.00 | 1.46 |
-| Hallucination-risk | 0.85 | 0.32 | 0.96 | 1.16 |
-| Rigid | 0.64 | 0.62 | 1.00 | 1.26 |
-| Collapse | 0.39 | 0.31 | 0.22 | 0.46 |
+| Creative-grounded | 0.85 | 0.60 | 1.00 | 1.44 |
+| Hallucination-risk | 0.79 | 0.32 | 0.97 | 1.11 |
+| Rigid | 0.62 | 0.62 | 1.00 | 1.25 |
+| Collapse | 0.45 | 0.32 | 0.21 | 0.51 |
 
-**Known misclassification (1/28):**
+**Known misclassification (1/82):**
 
-1. `edge-01-creative-but-no-retrieval` — expected creative-grounded, classified as hallucination-risk (I=0.33). The output is genuinely creative but lacks any retrieval context, so the I estimator correctly reports low groundedness; the design question is whether "creative without grounding" should be flagged as a risk.
+1. `edge-01-creative-but-no-retrieval` — expected creative-grounded, classified as hallucination-risk (I≈0.33). The output is genuinely creative but lacks any retrieval context, so the I estimator correctly reports low groundedness; the design question is whether "creative without grounding" should be flagged as a risk. This is left as an open, deliberate edge case rather than a defect.
 
 **Previously-fixed misclassifications:**
 

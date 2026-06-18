@@ -210,6 +210,23 @@ def evaluate_with_drift(
         if "max_retrieval_chunks" not in params:
             params["max_retrieval_chunks"] = 5
 
+    # Early hallucination warning from the recursion trajectory (ΔC↑, ΔI↓):
+    # tighten grounding before the level-S slope confirms the decline.
+    if "recursion_diverging" in alerts:
+        params["citation_mode"] = "strict"
+        if "max_retrieval_chunks" not in params:
+            params["max_retrieval_chunks"] = 5
+
+    # Early collapse warning from the recursion trajectory (ΔC↓, ΔI↓):
+    # hold to stabilise and ease temperature down.
+    if "recursion_contracting" in alerts:
+        params["stabilise"] = True
+        if "temperature" in params:
+            params["temperature"] = max(
+                round(params["temperature"] - _DRIFT_TEMP_REDUCTION, 2),
+                _DRIFT_TEMP_FLOOR,
+            )
+
     return PolicyAction(
         action=base.action,
         reason=reason,

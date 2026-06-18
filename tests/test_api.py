@@ -195,6 +195,34 @@ class TestSessionSummary:
         data = resp.get_json()
         assert data["ok"] is False
 
+    def test_summary_exposes_recursion_fields(self, seeded_client):
+        data = seeded_client.get("/v1/session/s1").get_json()
+        for key in (
+            "trajectory_counts", "avg_delta_s",
+            "cumulative_delta_s", "current_trajectory",
+        ):
+            assert key in data
+
+    def test_summary_recursion_after_two_steps(self, client):
+        client.post(
+            "/v1/session/start",
+            data=json.dumps({"session_id": "s2"}),
+            content_type="application/json",
+        )
+        for text in (
+            "URP frames persistence as recursive S-maximization across scales.",
+            "An entirely different exploration opening new conceptual territory here.",
+        ):
+            client.post(
+                "/v1/step",
+                data=json.dumps({"session_id": "s2", "prompt": "p", "output": {"text": text}}),
+                content_type="application/json",
+            )
+        data = client.get("/v1/session/s2").get_json()
+        assert data["step_count"] == 2
+        assert data["current_trajectory"] != "initial"
+        assert sum(data["trajectory_counts"].values()) == 1
+
 
 # ===========================================================================
 # §8.4  GET /v1/trace/<trace_id>/graph
@@ -375,6 +403,26 @@ class TestSessionWindow:
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["window"] == 10
+
+    def test_window_exposes_delta_stats_after_two_steps(self, client):
+        client.post(
+            "/v1/session/start",
+            data=json.dumps({"session_id": "s3"}),
+            content_type="application/json",
+        )
+        for text in (
+            "URP frames persistence as recursive S-maximization across scales.",
+            "A different second answer that opens fresh conceptual ground entirely.",
+        ):
+            client.post(
+                "/v1/step",
+                data=json.dumps({"session_id": "s3", "prompt": "p", "output": {"text": text}}),
+                content_type="application/json",
+            )
+        data = client.get("/v1/session/s3/window?window=5").get_json()
+        for field in ("delta_c", "delta_i", "delta_s"):
+            assert field in data["stats"]
+        assert "cumulative_delta_s" in data
 
     def test_window_invalid_param(self, seeded_client):
         resp = seeded_client.get("/v1/session/s1/window?window=abc")

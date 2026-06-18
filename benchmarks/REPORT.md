@@ -1,6 +1,6 @@
 # S Compass API Benchmark Report
 
-**Generated:** 2026-03-31T11:58:50.018372+00:00
+**Generated:** 2026-06-07T19:16:55.901932+00:00
 
 **Corpus size:** 82 scenarios
 
@@ -462,7 +462,7 @@ _Gray-box scenario with high decoding instability and no grounding_
 - **Expected regime:** `hallucination-risk`
 - **Computed regime:** `hallucination-risk`
 - **Mode:** `gray-box` (confidence=0.95)
-- **Scores:** C=0.6530, I=0.2473, κ=0.7326, S=0.8342
+- **Scores:** C=0.6530, I=0.2472, κ=0.7326, S=0.8342
 - **Policy:** `require_grounded_regeneration` — Integration below threshold; high hallucination risk (high-confidence detection).
 
 
@@ -1280,7 +1280,7 @@ _White-box signals reveal total layerwise breakdown: wildly oscillating attentio
 - **Avg scores:** C=0.7909, I=0.3233, κ=0.9701, S=1.1066
 - **Rolling window (20):**
   - c: mean=0.7909, std=0.0609, range=[0.6521, 0.9068]
-  - i: mean=0.3233, std=0.0257, range=[0.2473, 0.3333]
+  - i: mean=0.3233, std=0.0257, range=[0.2472, 0.3333]
   - kappa: mean=0.9701, std=0.0779, range=[0.7326, 1.0000]
   - s: mean=1.1066, std=0.1032, range=[0.8342, 1.2401]
 
