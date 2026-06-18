@@ -77,6 +77,14 @@ Because the delta form is built *from* the level snapshot, there is exactly one
 definition of distinction and integration in the system. The only difference
 between the forms is whether we report the value or its change.
 
+The **drift detector** (`s_compass/store.py :: drift_summary`) closes the loop:
+it reuses the same `SEngine` over a session's recent snapshots, so its
+trajectory metrics (`delta_s_mean`, `cumulative_delta_s`, `current_trajectory`)
+are the explicit per-step recursion that its level-form OLS slope (`s_trend`)
+only approximates. This is why the trajectory alerts can fire a step earlier
+than the slope-based `declining_s`: when rising $C$ masks falling $I$, the
+level-S slope stays flat while the step is already `diverging`.
+
 ---
 
 ## 4. Two regime vocabularies

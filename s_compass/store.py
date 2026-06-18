@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from .schemas import Event, PolicyAction, ScoreSnapshot
+from .s_engine import SEngine
 
 
 @dataclass
@@ -209,6 +210,52 @@ class EvaluationStore:
             return 0.0
         return (n * sum_xy - sum_x * sum_y) / denom
 
+    @staticmethod
+    def _recursion_metrics(snaps: List[ScoreSnapshot]) -> Dict[str, Any]:
+        """Compute delta-form recursion metrics over *snaps*.
+
+        Reuses :class:`~s_compass.s_engine.SEngine` so the drift layer and the
+        gateway's per-step recursion tracking share exactly one definition of
+        ΔC, ΔI, ΔS, and the trajectory regime.  The level-form slopes
+        (``s_trend`` etc.) are a smoothed proxy for the average ΔS; these
+        metrics are the explicit per-step recursion the slope approximates.
+
+        Returns the per-step ``trajectory`` (the first entry is ``"initial"``),
+        the mean ΔC / ΔI / ΔS, the cumulative ΔS over the window (the recursion
+        integral ``S(T) = Σ ΔSₜ``), and the dominant / current trajectory.
+        """
+        engine = SEngine()
+        metrics = [engine.assess_snapshot(s) for s in snaps]
+        trajectory = [m.regime for m in metrics]
+
+        # Steps that actually have a predecessor to difference against.
+        deltas = [m for m in metrics if not m.is_initial]
+        if not deltas:
+            return {
+                "delta_c_mean": 0.0,
+                "delta_i_mean": 0.0,
+                "delta_s_mean": 0.0,
+                "cumulative_delta_s": 0.0,
+                "dominant_trajectory": None,
+                "current_trajectory": metrics[-1].regime if metrics else None,
+                "trajectory": trajectory,
+            }
+
+        ds = [m.delta_s for m in deltas]
+        counts: Dict[str, int] = {}
+        for m in deltas:
+            counts[m.regime] = counts.get(m.regime, 0) + 1
+
+        return {
+            "delta_c_mean": round(sum(m.delta_c for m in deltas) / len(deltas), 4),
+            "delta_i_mean": round(sum(m.delta_i for m in deltas) / len(deltas), 4),
+            "delta_s_mean": round(sum(ds) / len(ds), 4),
+            "cumulative_delta_s": round(sum(ds), 4),
+            "dominant_trajectory": max(counts, key=counts.get),
+            "current_trajectory": deltas[-1].regime,
+            "trajectory": trajectory,
+        }
+
     def regime_transitions(
         self,
         session_id: str,
@@ -269,9 +316,18 @@ class EvaluationStore:
         -------
         dict | None
             ``{"session_id", "window", "step_count", "s_trend", "c_trend",
-            "i_trend", "kappa_trend", "regime_transitions", "transition_rate",
-            "dominant_regime", "current_regime", "alerts"}``
+            "i_trend", "kappa_trend", "delta_c_mean", "delta_i_mean",
+            "delta_s_mean", "cumulative_delta_s", "trajectory",
+            "dominant_trajectory", "current_trajectory", "regime_transitions",
+            "transition_rate", "dominant_regime", "current_regime", "alerts"}``
             Returns ``None`` if the session does not exist.
+
+            The ``s_trend`` (level-form OLS slope) and ``delta_s_mean``
+            (delta-form mean per-step ΔS) are two views of the same trend: the
+            slope smooths, the delta form gives the explicit recursion.  The
+            ``*_trajectory`` fields and the ``recursion_diverging`` /
+            ``recursion_contracting`` alerts are the delta-form early warnings
+            that fire before the slope-based ``declining_s`` threshold trips.
         """
         rec = self._sessions.get(session_id)
         if rec is None:
@@ -288,6 +344,13 @@ class EvaluationStore:
                 "c_trend": 0.0,
                 "i_trend": 0.0,
                 "kappa_trend": 0.0,
+                "delta_c_mean": 0.0,
+                "delta_i_mean": 0.0,
+                "delta_s_mean": 0.0,
+                "cumulative_delta_s": 0.0,
+                "trajectory": [],
+                "dominant_trajectory": None,
+                "current_trajectory": None,
                 "regime_transitions": [],
                 "transition_rate": 0.0,
                 "dominant_regime": None,
@@ -295,11 +358,15 @@ class EvaluationStore:
                 "alerts": [],
             }
 
-        # Score trends (OLS slope per step)
+        # Score trends (OLS slope per step) — the level-form smoothed view.
         s_trend = round(self._linear_slope([s.s for s in snaps]), 4)
         c_trend = round(self._linear_slope([s.c for s in snaps]), 4)
         i_trend = round(self._linear_slope([s.i for s in snaps]), 4)
         kappa_trend = round(self._linear_slope([s.kappa for s in snaps]), 4)
+
+        # Delta-form recursion (ΔC, ΔI, ΔS and trajectory) — the explicit
+        # per-step view the slope above approximates.
+        rec = self._recursion_metrics(snaps)
 
         # Regime transitions
         transitions: List[Dict[str, Any]] = []
@@ -328,6 +395,15 @@ class EvaluationStore:
         if "declining_s" in alerts and current_regime == "hallucination-risk":
             alerts.append("hallucination_drift")
 
+        # Delta-form early warnings: fire on the instantaneous trajectory
+        # (one step earlier than the slope-based declining_s, which needs
+        # ≥ 3 points and a threshold crossing).  These never fire on a stable
+        # session, whose trajectory is "steady" or "expanding".
+        if rec["current_trajectory"] == "diverging":
+            alerts.append("recursion_diverging")
+        if rec["current_trajectory"] == "contracting":
+            alerts.append("recursion_contracting")
+
         return {
             "session_id": session_id,
             "window": window,
@@ -336,6 +412,13 @@ class EvaluationStore:
             "c_trend": c_trend,
             "i_trend": i_trend,
             "kappa_trend": kappa_trend,
+            "delta_c_mean": rec["delta_c_mean"],
+            "delta_i_mean": rec["delta_i_mean"],
+            "delta_s_mean": rec["delta_s_mean"],
+            "cumulative_delta_s": rec["cumulative_delta_s"],
+            "trajectory": rec["trajectory"],
+            "dominant_trajectory": rec["dominant_trajectory"],
+            "current_trajectory": rec["current_trajectory"],
             "regime_transitions": transitions,
             "transition_rate": transition_rate,
             "dominant_regime": dominant_regime,

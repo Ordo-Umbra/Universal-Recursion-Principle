@@ -264,6 +264,8 @@ The drift detection layer analyses session-level trends in real time, surfacing 
 
 **Score trends**: A least-squares linear regression is computed over the most recent score window for each of C, I, κ, and S.  A negative slope for S indicates declining overall quality; individual component trends help diagnose whether the problem is distinction (C), coherence (I), or capacity (κ).
 
+**Delta-form recursion**: Alongside the level-form slopes, the drift summary reports the explicit per-step recursion — ΔC, ΔI, and ΔS = ΔC + κΔI — computed by the same `SEngine` the gateway uses (see [Level-and-Delta-Forms.md](Level-and-Delta-Forms.md)).  Fields: `delta_c_mean`, `delta_i_mean`, `delta_s_mean`, `cumulative_delta_s` (the recursion integral S(T) = Σ ΔSₜ over the window), a per-step `trajectory` list, and `dominant_trajectory` / `current_trajectory`.  The level-form `s_trend` is a smoothed proxy for `delta_s_mean`; the trajectory labels are the early-warning the slope cannot give.  Because rising C can mask falling I, the level-S slope can stay flat or even positive while a step is already `diverging` — the delta form flags that turn one step earlier.
+
 **Regime transitions**: Every step-over-step regime change is recorded with the step index, previous regime, and new regime.  The transition rate (transitions / (steps - 1)) measures session stability.
 
 **Alerts**: The system generates alerts based on trend and transition patterns:
@@ -274,6 +276,8 @@ The drift detection layer analyses session-level trends in real time, surfacing 
 | `regime_instability` | Transition rate ≥ 0.30 over ≥ 3 steps | Behaviour is oscillating between regimes |
 | `collapse_risk` | `declining_s` + current regime = collapse | Session is on a trajectory toward failure |
 | `hallucination_drift` | `declining_s` + current regime = hallucination-risk | Quality decline is manifesting as ungrounded output |
+| `recursion_diverging` | current trajectory = `diverging` (ΔC > 0, ΔI < 0) | Novelty rising while grounding falls — early hallucination warning (fires from a single ΔС/ΔI step, before `declining_s`) |
+| `recursion_contracting` | current trajectory = `contracting` (ΔC < 0, ΔI < 0) | Distinction and integration both shrinking — early collapse warning |
 
 **Drift-aware policy escalation**: When drift alerts are present, the policy engine escalates interventions:
 
@@ -281,6 +285,8 @@ The drift detection layer analyses session-level trends in real time, surfacing 
 - `regime_instability` → add `stabilise: true` to parameters
 - `collapse_risk` → override to `reduce_load_and_retry` regardless of base action
 - `hallucination_drift` → enforce `citation_mode: strict`
+- `recursion_diverging` → enforce `citation_mode: strict` early (before the slope confirms the decline)
+- `recursion_contracting` → add `stabilise: true` and ease temperature down by 0.10
 
 **API access**: `GET /v1/session/{id}/drift?window=N` returns the full drift summary including trends, transitions, transition rate, dominant/current regime, and active alerts.
 

@@ -565,3 +565,118 @@ class TestDriftIntegration:
         assert drift["step_count"] == 6
         assert drift["s_trend"] < 0.0  # S should be declining
         assert len(drift["regime_transitions"]) >= 1  # at least one transition
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  8. Delta-form recursion in the drift summary
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestRecursionInDrift:
+    """The drift summary should carry delta-form (ΔC/ΔI/ΔS, trajectory) data."""
+
+    def test_recursion_fields_present(self):
+        store = _store_with_scores([
+            _snap(c=0.50, i=0.50, kappa=0.90, regime="creative-grounded"),
+            _snap(c=0.60, i=0.58, kappa=0.92, regime="creative-grounded"),
+            _snap(c=0.70, i=0.66, kappa=0.94, regime="creative-grounded"),
+        ])
+        d = store.drift_summary("sess")
+        for key in (
+            "delta_c_mean", "delta_i_mean", "delta_s_mean",
+            "cumulative_delta_s", "trajectory",
+            "dominant_trajectory", "current_trajectory",
+        ):
+            assert key in d
+        # First per-step trajectory entry has no predecessor.
+        assert d["trajectory"][0] == "initial"
+        # Rising C and I → expanding trajectory, positive ΔS.
+        assert d["current_trajectory"] == "expanding"
+        assert d["delta_s_mean"] > 0.0
+
+    def test_empty_session_has_recursion_defaults(self):
+        store = _store_with_scores([])
+        d = store.drift_summary("sess")
+        assert d["delta_s_mean"] == 0.0
+        assert d["cumulative_delta_s"] == 0.0
+        assert d["trajectory"] == []
+        assert d["current_trajectory"] is None
+
+    def test_cumulative_is_sum_of_deltas(self):
+        store = _store_with_scores([
+            _snap(c=0.40, i=0.40, kappa=0.90, regime="creative-grounded"),
+            _snap(c=0.55, i=0.50, kappa=0.90, regime="creative-grounded"),
+            _snap(c=0.70, i=0.62, kappa=0.90, regime="creative-grounded"),
+        ])
+        d = store.drift_summary("sess")
+        n_deltas = d["step_count"] - 1
+        # cumulative ΔS = mean ΔS × number of deltas (within rounding).
+        assert d["cumulative_delta_s"] == pytest.approx(
+            d["delta_s_mean"] * n_deltas, abs=1e-3
+        )
+
+    def test_stable_session_no_recursion_alerts(self):
+        store = _store_with_scores([
+            _snap(c=0.60, i=0.55, kappa=0.95, regime="creative-grounded"),
+            _snap(c=0.62, i=0.57, kappa=0.94, regime="creative-grounded"),
+            _snap(c=0.64, i=0.56, kappa=0.93, regime="creative-grounded"),
+        ])
+        d = store.drift_summary("sess")
+        assert "recursion_diverging" not in d["alerts"]
+        assert "recursion_contracting" not in d["alerts"]
+
+
+class TestRecursionEarlyWarnings:
+    """Trajectory alerts fire one step earlier than the slope-based ones."""
+
+    def test_diverging_fires_before_declining_s(self):
+        # Two steps only: ΔC↑, ΔI↓ → diverging.  declining_s needs ≥ 3 points,
+        # so the recursion alert is the *only* early warning available here.
+        store = _store_with_scores([
+            _snap(c=0.50, i=0.60, kappa=0.90, regime="creative-grounded"),
+            _snap(c=0.72, i=0.38, kappa=0.90, regime="hallucination-risk"),
+        ])
+        d = store.drift_summary("sess")
+        assert d["current_trajectory"] == "diverging"
+        assert "recursion_diverging" in d["alerts"]
+        assert "declining_s" not in d["alerts"]  # not enough points yet
+
+    def test_contracting_fires_before_declining_s(self):
+        store = _store_with_scores([
+            _snap(c=0.70, i=0.60, kappa=0.90, regime="creative-grounded"),
+            _snap(c=0.48, i=0.38, kappa=0.70, regime="rigid"),
+        ])
+        d = store.drift_summary("sess")
+        assert d["current_trajectory"] == "contracting"
+        assert "recursion_contracting" in d["alerts"]
+        assert "declining_s" not in d["alerts"]
+
+    def test_drift_endpoint_exposes_trajectory(self):
+        gw = SCompassGateway()
+        app = create_app(gateway=gw)
+        app.config["TESTING"] = True
+        client = app.test_client()
+        gw.start_session("s1")
+        gw.store.add_score("s1", _snap(c=0.5, i=0.6, regime="creative-grounded"))
+        gw.store.add_score("s1", _snap(c=0.72, i=0.38, regime="hallucination-risk"))
+        resp = client.get("/v1/session/s1/drift")
+        data = json.loads(resp.data)
+        assert data["current_trajectory"] == "diverging"
+        assert "delta_s_mean" in data
+
+
+class TestRecursionAwarePolicy:
+    """evaluate_with_drift should react to the new trajectory alerts."""
+
+    def test_recursion_diverging_tightens_citations(self):
+        snap = _snap(regime="creative-grounded")  # base action = none
+        result = evaluate_with_drift(snap, drift={"alerts": ["recursion_diverging"]})
+        assert result.parameters.get("citation_mode") == "strict"
+        assert result.parameters.get("max_retrieval_chunks") == 5
+        assert "recursion_diverging" in result.reason
+
+    def test_recursion_contracting_stabilises_and_eases_temperature(self):
+        snap = _snap(regime="rigid", c=0.3, i=0.6, kappa=0.9)  # base temp 0.7
+        base = evaluate_policy(snap)
+        result = evaluate_with_drift(snap, drift={"alerts": ["recursion_contracting"]})
+        assert result.parameters.get("stabilise") is True
+        assert result.parameters["temperature"] < base.parameters["temperature"]
