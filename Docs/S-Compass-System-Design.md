@@ -466,6 +466,8 @@ Example response:
 
 Returns a session summary, including aggregate scores and regime counts.
 
+The summary also carries the delta-form recursion view (see [Level-and-Delta-Forms.md](Level-and-Delta-Forms.md)): `trajectory_counts` (mirroring `regime_counts`), `avg_delta_s`, `cumulative_delta_s` (the session's recursion integral S(T) = Σ ΔSₜ), and `current_trajectory`.  The rolling-window endpoint `GET /v1/session/{id}/window` likewise adds `delta_c` / `delta_i` / `delta_s` stat blocks and a windowed `cumulative_delta_s` once a session has at least two steps.
+
 ### 8.4 `GET /v1/trace/{trace_id}/graph`
 
 Returns the coherence graph for analyst inspection.

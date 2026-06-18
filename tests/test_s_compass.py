@@ -615,3 +615,85 @@ class TestTemplateRigidClassification:
         # Both should be valid
         assert 0.0 <= c_template <= 1.0
         assert 0.0 <= c_creative <= 1.0
+
+
+# ===========================================================================
+# Recursion (delta-form) surfaced in session summary and rolling window
+# ===========================================================================
+
+def _rsnap(c, i, kappa=0.9, regime="creative-grounded"):
+    return ScoreSnapshot(c=c, i=i, kappa=kappa, s=round(c + kappa * i, 4), regime=regime)
+
+
+class TestRecursionInSessionSummary:
+    def test_summary_carries_recursion_fields(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        for snap in [
+            _rsnap(0.40, 0.40),
+            _rsnap(0.55, 0.52),
+            _rsnap(0.70, 0.64),
+        ]:
+            store.add_score("s1", snap)
+        summary = store.session_summary("s1")
+        for key in (
+            "trajectory_counts", "avg_delta_s", "cumulative_delta_s",
+            "current_trajectory",
+        ):
+            assert key in summary
+        # Rising C and I across the session → expanding trajectory, ΔS > 0.
+        assert summary["current_trajectory"] == "expanding"
+        assert summary["cumulative_delta_s"] > 0.0
+        # trajectory_counts mirrors regime_counts (counts the n-1 delta steps).
+        assert sum(summary["trajectory_counts"].values()) == summary["step_count"] - 1
+
+    def test_cumulative_equals_avg_times_deltas(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        for snap in [_rsnap(0.4, 0.4), _rsnap(0.5, 0.5), _rsnap(0.6, 0.6)]:
+            store.add_score("s1", snap)
+        summary = store.session_summary("s1")
+        n_deltas = summary["step_count"] - 1
+        assert summary["cumulative_delta_s"] == pytest.approx(
+            summary["avg_delta_s"] * n_deltas, abs=1e-3
+        )
+
+    def test_empty_summary_has_recursion_defaults(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        summary = store.session_summary("s1")
+        assert summary["trajectory_counts"] == {}
+        assert summary["avg_delta_s"] is None
+        assert summary["cumulative_delta_s"] == 0.0
+        assert summary["current_trajectory"] is None
+
+
+class TestRecursionInRollingWindow:
+    def test_window_carries_delta_stats(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        for snap in [_rsnap(0.4, 0.4), _rsnap(0.5, 0.5), _rsnap(0.6, 0.6)]:
+            store.add_score("s1", snap)
+        result = store.rolling_window_stats("s1", window=5)
+        for field in ("delta_c", "delta_i", "delta_s"):
+            assert field in result["stats"]
+            for stat_key in ("mean", "std", "min", "max"):
+                assert stat_key in result["stats"][field]
+        assert "cumulative_delta_s" in result
+        assert result["cumulative_delta_s"] > 0.0
+
+    def test_single_snapshot_has_no_delta_stats(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        store.add_score("s1", _rsnap(0.5, 0.5))
+        result = store.rolling_window_stats("s1", window=5)
+        # Level-form blocks present, delta blocks absent (no delta step yet).
+        assert "c" in result["stats"]
+        assert "delta_s" not in result["stats"]
+        assert result["cumulative_delta_s"] == 0.0
+
+    def test_empty_window_stats_unchanged(self):
+        store = EvaluationStore()
+        store.start_session("s1")
+        result = store.rolling_window_stats("s1", window=5)
+        assert result["stats"] == {}
