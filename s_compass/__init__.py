@@ -58,6 +58,7 @@ from .graph import (
     graph_to_dict,
 )
 from .api import create_app
+from .visualize import plot_session, plot_session_from_store
 
 __all__ = [
     # Gateway
@@ -109,4 +110,7 @@ __all__ = [
     "graph_to_dict",
     # API
     "create_app",
+    # Visualization
+    "plot_session",
+    "plot_session_from_store",
 ]
