@@ -6,16 +6,33 @@ import networkx as nx
 # Use a non-interactive backend for headless test environments
 matplotlib.use("Agg")
 
-from Sims.Helium_variational import helium_energy, ionization_potential
+# Sims/Helium_variational.py and Sims/biology_urp.py are referenced here but
+# absent from the repository (lost during the phone-notebook era).  Their
+# tests are skipped per-function below so the surviving sims stay covered;
+# restore the modules to reactivate them.
+try:
+    from Sims.Helium_variational import helium_energy, ionization_potential
+    HAS_HELIUM = True
+except ImportError:
+    HAS_HELIUM = False
 from Sims.beta_g_emergence import urp_evolve
 from Sims.qcd_attractor_emergence import urp_step
 from Sims.multi_agent_cooperation import graph_s_metrics
 from Sims.s_landscape_explorer import s_potential, gradient_ascent_step
-from Sims.biology_urp import (
-    simulate_cell_demon,
-    simulate_enzyme_demon,
-    sagawa_ito_check,
-)
+try:
+    from Sims.biology_urp import (
+        simulate_cell_demon,
+        simulate_enzyme_demon,
+        sagawa_ito_check,
+    )
+    HAS_BIOLOGY = True
+except ImportError:
+    HAS_BIOLOGY = False
+
+requires_helium = pytest.mark.skipif(
+    not HAS_HELIUM, reason="Sims/Helium_variational.py missing from repo")
+requires_biology = pytest.mark.skipif(
+    not HAS_BIOLOGY, reason="Sims/biology_urp.py missing from repo")
 from Sims.layerwise_transformer import compute_layer_metrics, simulate_layerwise
 from Sims.real_transformer_layerwise import (
     entropy as real_entropy,
@@ -35,11 +52,13 @@ EPSILON = 1e-10  # Numerical stability for log terms
 DENSITY_PENALTY_FACTOR = 5  # Matches graph_s_metrics density penalty coefficient
 
 
+@requires_helium
 def test_helium_energy_known_point():
     energy = helium_energy(Z_EFF_REF, beta=BETA_DEFAULT, prefactor=HELIUM_1S_WAVEFUNCTION_PREFACTOR)
     assert energy == pytest.approx(EXPECTED_HELIUM_ENERGY, rel=1e-6)
 
 
+@requires_helium
 def test_ionization_potential_positive_and_consistent():
     z_eff = 1.8
     energy = helium_energy(z_eff, beta=BETA_DEFAULT)
@@ -113,6 +132,7 @@ def test_gradient_ascent_small_step_near_flat_region():
 # Biology URP simulation
 # ===========================================================================
 
+@requires_biology
 def test_cell_demon_returns_correct_shapes():
     n = 30
     dC, dI, kap, S = simulate_cell_demon(n_steps=n, rng_seed=1)
@@ -120,17 +140,20 @@ def test_cell_demon_returns_correct_shapes():
         assert arr.shape == (n,)
 
 
+@requires_biology
 def test_cell_demon_s_values_non_negative():
     dC, dI, kap, S = simulate_cell_demon(n_steps=40, rng_seed=2)
     assert np.all(S >= 0)
 
 
+@requires_biology
 def test_cell_demon_kappa_in_valid_range():
     _, _, kap, _ = simulate_cell_demon(n_steps=40, rng_seed=3)
     assert np.all(kap > 0)
     assert np.all(kap <= 1.0)
 
 
+@requires_biology
 def test_cell_demon_custom_kappa_schedule():
     schedule = [0.9, 0.8, 0.7]
     dC, dI, kap, S = simulate_cell_demon(n_steps=5, kappa_schedule=schedule, rng_seed=4)
@@ -142,6 +165,7 @@ def test_cell_demon_custom_kappa_schedule():
     assert kap[4] == pytest.approx(0.7)
 
 
+@requires_biology
 def test_enzyme_demon_returns_correct_shapes():
     n = 50
     C, I, kap, S, dev = simulate_enzyme_demon(n_steps=n, rng_seed=5)
@@ -149,11 +173,13 @@ def test_enzyme_demon_returns_correct_shapes():
         assert arr.shape == (n,)
 
 
+@requires_biology
 def test_enzyme_demon_deviation_non_negative():
     _, _, _, _, dev = simulate_enzyme_demon(n_steps=40, rng_seed=6)
     assert np.all(dev >= 0)
 
 
+@requires_biology
 def test_enzyme_demon_s_formula():
     """S = C + kappa * I at every step."""
     C, I, kap, S, _ = simulate_enzyme_demon(n_steps=20, rng_seed=7)
@@ -161,6 +187,7 @@ def test_enzyme_demon_s_formula():
     assert np.allclose(S, expected_S)
 
 
+@requires_biology
 def test_sagawa_ito_check_no_violations():
     """Well-behaved cell demon should satisfy the budget bound."""
     dC, dI, kap, _ = simulate_cell_demon(n_steps=60, rng_seed=8)
@@ -168,6 +195,7 @@ def test_sagawa_ito_check_no_violations():
     assert ok is True
 
 
+@requires_biology
 def test_sagawa_ito_check_detects_violations():
     """Manually constructed violation should be caught."""
     dC = np.array([0.1, 0.1, 0.1])

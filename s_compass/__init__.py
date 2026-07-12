@@ -18,6 +18,7 @@ Quick start::
     print(result["scores"], result["regime"])
 """
 
+from .capacity_dynamics import CapacityDynamics, CapacityParams
 from .gateway import SCompassGateway
 from .schemas import (
     Claim,
@@ -69,6 +70,9 @@ from .visualize import plot_session, plot_session_from_store
 __all__ = [
     # Gateway
     "SCompassGateway",
+    # Dynamical capacity (the stateful URP κ law)
+    "CapacityDynamics",
+    "CapacityParams",
     # Schemas
     "Claim",
     "Event",

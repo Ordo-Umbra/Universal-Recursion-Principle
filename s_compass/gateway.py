@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from .capacity_dynamics import CapacityDynamics, CapacityParams
 from .schemas import Event, PolicyAction, ScoreSnapshot, StepInput
 from .scoring import score_step
 from .policy import evaluate as evaluate_policy
@@ -38,6 +39,8 @@ class SCompassGateway:
         store: Optional[EvaluationStore] = None,
         track_recursion: bool = False,
         recursion_kappa: Optional[float] = None,
+        track_capacity: bool = False,
+        capacity_params: Optional[CapacityParams] = None,
     ) -> None:
         self.store = store or EvaluationStore()
         # trace_id → coherence analysis dict (Design-doc §8.4)
@@ -47,6 +50,12 @@ class SCompassGateway:
         self._recursion_kappa = recursion_kappa
         # session_id → SEngine (one per session, since deltas are per-session)
         self._engines: Dict[str, SEngine] = {}
+        # Opt-in dynamical capacity: κ with state, the URP capacity law
+        # dκ/dt = r(κ₀−κ) − c·load·κ integrated across the session.
+        self.track_capacity = track_capacity
+        self._capacity_params = capacity_params
+        # session_id → CapacityDynamics (state lives per session)
+        self._capacity: Dict[str, CapacityDynamics] = {}
 
     # -- session management -------------------------------------------------
 
@@ -60,6 +69,9 @@ class SCompassGateway:
         # Fresh recursion state for a (re)started session.
         if self.track_recursion:
             self._engines[session_id] = SEngine(kappa=self._recursion_kappa)
+        # Fresh capacity state for a (re)started session.
+        if self.track_capacity:
+            self._capacity[session_id] = CapacityDynamics(self._capacity_params)
         evt = normalize_event(
             "session.started",
             session_id=session_id,
@@ -201,8 +213,41 @@ class SCompassGateway:
                 "is_initial": rec.is_initial,
             }
 
+        # 5c. Dynamical capacity (opt-in): the stateful κ law, consumed by
+        #     this step's distinction + stress load, regenerating with slack.
+        capacity: Optional[Dict[str, object]] = None
+        if self.track_capacity:
+            dyn = self._capacity.setdefault(
+                session_id, CapacityDynamics(self._capacity_params)
+            )
+            capacity = dyn.update(snapshot)
+            snapshot.kappa_dynamic = capacity["kappa_dynamic"]
+            snapshot.s_dynamic = capacity["s_dynamic"]
+
         # 6. Policy
         policy: PolicyAction = evaluate_policy(snapshot)
+
+        # 6b. Capacity escalation: a depleted *budget* is actionable even when
+        #     the instantaneous readings look healthy — the state remembers
+        #     the sustained load the per-step estimator forgets.  Like the
+        #     drift layer's collapse_risk, depletion overrides the base
+        #     action (recording what it superseded).
+        if (capacity is not None and capacity["depleted"]
+                and policy.action != "reduce_load_and_retry"):
+            parameters: Dict[str, Any] = {"stabilise": True}
+            if policy.action != "none":
+                parameters["superseded_action"] = policy.action
+            policy = PolicyAction(
+                action="reduce_load_and_retry",
+                reason=(
+                    "dynamical capacity depleted "
+                    f"(κ_dyn = {capacity['kappa_dynamic']} < "
+                    f"{self._capacity[session_id].params.depleted_threshold}): "
+                    "sustained load has drained the session budget"
+                ),
+                parameters=parameters,
+                trace_id=step.trace_id,
+            )
         self.store.add_policy(session_id, policy)
 
         if policy.action != "none":
@@ -235,7 +280,21 @@ class SCompassGateway:
         }
         if recursion is not None:
             result["recursion"] = recursion
+        if capacity is not None:
+            result["capacity"] = capacity
         return result
+
+    def recover_capacity(self, session_id: str, dt: float) -> Optional[float]:
+        """Apply idle-time recovery to a session's capacity state.
+
+        Call between turns with the idle duration in step-units (e.g. one
+        unit per typical turn interval); returns the recovered κ, or ``None``
+        when capacity tracking is off or the session is unknown.
+        """
+        dyn = self._capacity.get(session_id)
+        if dyn is None:
+            return None
+        return round(dyn.recover(dt), 4)
 
     # -- read endpoints -----------------------------------------------------
 

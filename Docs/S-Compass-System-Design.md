@@ -202,6 +202,28 @@ A system may show high novelty and coherence in easy conditions, but low κ mean
 
 ---
 
+### 4.5b Dynamical κ — the capacity law with state
+
+The κ estimator above is an *instantaneous stress readout*, recomputed fresh each step and forgotten immediately. The URP capacity is not a readout — it is a field with **dynamics**, consumed by distinction load and regenerating with slack:
+
+```text
+dκ/dt = r·(κ₀ − κ) − c·load·κ
+```
+
+This is the same law the Project-Genesis engine integrates for its capacity field, whose measured consequences — recall failing before coherence, the persistence↔plasticity crossover in the recovery rate `r`, and capacity-bound S-optima relocating to criticality (verified across two substrates by the criticality-transplant experiment) — all depend on κ carrying *state* between steps.
+
+`capacity_dynamics.py` gives sessions that state, opt-in (`SCompassGateway(track_capacity=True)`):
+
+- **Load** blends what a step demands of the budget: the distinction produced (the C score — capacity is consumed by making distinctions) and the stress the static estimator reads (`1 − κ_static`). Weights are configurable and stated.
+- **Exact integration**: the ODE is linear at fixed load, so each step updates κ in closed form — no stability constraints.
+- **Idle recovery**: `gateway.recover_capacity(session_id, dt)` integrates the law at zero load, so a session resumed after a break returns with genuinely restored capacity — state the per-step estimator cannot carry.
+- **Readings**: `kappa_dynamic` (the state) and `s_dynamic = C + κ_dyn·I` appear alongside the untouched level-form scores in step results, snapshots, and session timelines. The level-form `S = C + κ_static·I` and every benchmark threshold keep their meaning unchanged.
+- **Policy escalation**: a depleted budget (`κ_dyn` below the stated threshold) overrides the base action with `reduce_load_and_retry` (recording what it superseded) — sustained load is actionable even when every instantaneous reading looks healthy.
+
+What this makes testable (predictions inherited from the field results, now about sessions): identical steps score differently in a fresh vs a drained session; sustained heavy-load turns deplete the budget faster than any single-step reading shows; the recovery rate `r` is the persistence↔plasticity dial; and sessions held at high load should drift toward the delta-form `diverging` regime — the compass's hallucination trajectory — exactly where the transplant experiment shows capacity-starved S-climbers get pushed. Fit `r` and `c` per deployment; the defaults are stated conventions, not measurements.
+
+---
+
 ### 4.6 S Scoring Engine
 
 The scoring engine computes the top-level quantity:

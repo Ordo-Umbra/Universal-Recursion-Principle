@@ -96,7 +96,13 @@ class GraphEdge:
 
 @dataclass
 class ScoreSnapshot:
-    """A point-in-time score record (Design-doc §10.4)."""
+    """A point-in-time score record (Design-doc §10.4).
+
+    ``kappa_dynamic`` / ``s_dynamic`` are set only when the gateway runs
+    with capacity tracking enabled (``track_capacity=True``): the stateful
+    URP capacity law's reading alongside the instantaneous one.  ``kappa``
+    and ``s`` keep their level-form meaning unchanged.
+    """
 
     c: float
     i: float
@@ -106,6 +112,8 @@ class ScoreSnapshot:
     trace_id: Optional[str] = None
     confidence: float = 1.0
     mode: str = "black-box"
+    kappa_dynamic: Optional[float] = None
+    s_dynamic: Optional[float] = None
 
 
 @dataclass

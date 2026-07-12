@@ -133,6 +133,7 @@ The S Compass is a **runtime observability and control layer** for AI systems �
 | **C (Distinction)** | Novelty, diversity, and creative differentiation in the output | Is the system generating genuinely new structure, or just echoing its inputs? |
 | **I (Integration)** | Coherence, groundedness, citation coverage, and internal consistency | Is the output well-supported by evidence, or making things up? |
 | **κ (Capacity)** | Usable system capacity under load — context pressure, latency, tool health | Can the system sustain quality under its current operating conditions? |
+| **κ_dyn (Dynamical capacity)** | Opt-in stateful κ obeying the URP capacity law `dκ/dt = r(κ₀−κ) − c·load·κ` — consumed by distinction load, regenerating with slack and idle time | What has the session's sustained load done to its *budget*? Identical steps read differently in a fresh vs a drained session |
 | **S = C + κI** | The composite score: novelty + capacity-weighted coherence | The single number summarizing overall system health for this step |
 
 ### What S Compass can be used for
@@ -142,6 +143,7 @@ The S Compass is a **runtime observability and control layer** for AI systems �
 - **Collapse prevention**: When κ drops (context overload, tool failures, latency spikes), S Compass signals capacity stress before output quality degrades.
 - **Quality monitoring**: Track C, I, κ, and S over time across sessions to identify systemic trends, regression, or model degradation.
 - **Session-level drift detection**: Monitor S-score trends, regime stability, and transition patterns across a session, with automatic alerts for declining quality (`declining_s`), regime instability, collapse risk, and hallucination drift.
+- **Session budget tracking (dynamical κ)**: With `SCompassGateway(track_capacity=True)`, the session carries a stateful capacity integrating the URP law `dκ/dt = r(κ₀−κ) − c·load·κ` — the same equation whose consequences Project-Genesis measured (recall failing before coherence; the persistence↔plasticity crossover in `r`; capacity-starved S-optima pushed to criticality, verified across two substrates). Sustained load drains the budget even when every instantaneous reading looks healthy; idle time genuinely restores it (`recover_capacity`); depletion overrides policy with `reduce_load_and_retry`. See Design-doc §4.5b.
 - **Automated intervention**: The policy engine converts scores into actionable recommendations — adjusting temperature, retrieval breadth, citation requirements — without human-in-the-loop delay. Drift-aware policy escalation tightens interventions when session-level trends are concerning.
 - **Multi-model comparison**: Run different models or configurations through the same benchmark corpus and compare regime distributions and score profiles.
 - **Agent workflow diagnostics**: In multi-step agent systems, S Compass scores each step independently, revealing where in a chain quality breaks down.
