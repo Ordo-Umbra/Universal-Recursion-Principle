@@ -1,0 +1,71 @@
+{
+  "pilot": "4g",
+  "replicates": 20,
+  "families": [
+    "convex_radial",
+    "interior_points",
+    "irregular_radial",
+    "elongated"
+  ],
+  "search_conditions": [
+    "greedy",
+    "sampled_lookahead",
+    "independent_search"
+  ],
+  "representations": [
+    "initial",
+    "greedy",
+    "sampled_lookahead",
+    "independent_search",
+    "supplied_area"
+  ],
+  "proposal_budget_per_run": 500,
+  "search_runs": 240,
+  "proposal_evaluations": 120000,
+  "final_evaluations": 2400,
+  "development_feature_count": 135,
+  "searched_final_feature_count": 135,
+  "supplied_final_feature_count": 35,
+  "development_targets": [
+    "hull_perimeter",
+    "compactness",
+    "hull_count"
+  ],
+  "final_target": "hull_area",
+  "development_budgets": [
+    40,
+    80
+  ],
+  "final_budgets": [
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "primary_comparison": "sampled_lookahead versus initial at budget 200",
+  "positive_difference": "comparator log error minus focus log error; positive favors focus",
+  "new_stability_or_ratio_guard": false,
+  "parser_checks": {
+    "parser_round_trips": 5,
+    "aligned_root_max_difference": 0.0
+  },
+  "required_invariance_checks": 28,
+  "maximum_required_invariance_discrepancy": 1.7763568394002505e-15,
+  "pilot4f_reproduction": {
+    "comparison_rule": "absolute difference / max(1, absolute Pilot 4f value) <= 1e-10",
+    "rows_checked": 960,
+    "max_absolute_metric_difference": 4.440892098500626e-16,
+    "max_scaled_metric_difference": 2.453291538521766e-16
+  },
+  "runtime_seconds": 706.1682822704315,
+  "software": {
+    "python": "3.12.12",
+    "numpy": "2.2.5",
+    "pandas": "2.3.2",
+    "scipy": "1.16.2",
+    "sklearn": "1.7.2",
+    "platform": "Linux-6.18.62-x86_64-with-glibc2.36"
+  }
+}
