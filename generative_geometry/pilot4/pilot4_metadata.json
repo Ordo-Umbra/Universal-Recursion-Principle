@@ -1,0 +1,52 @@
+{
+  "experiment": "Generative Geometry Pilot 4",
+  "replicates": 20,
+  "families": [
+    "convex_radial",
+    "interior_points",
+    "irregular_radial",
+    "elongated"
+  ],
+  "tasks": [
+    "hull_area",
+    "hull_perimeter",
+    "compactness"
+  ],
+  "budgets_nested": [
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "representations": [
+    "raw",
+    "raw_quadratic",
+    "pairwise",
+    "higher_order",
+    "random_quadratic",
+    "shuffled_higher_order"
+  ],
+  "representation_dimensions": {
+    "raw": 12,
+    "raw_quadratic": 90,
+    "pairwise": 15,
+    "higher_order": 35,
+    "random_quadratic": 35,
+    "shuffled_higher_order": 35
+  },
+  "train_pool_per_family": 1200,
+  "test_per_family": 800,
+  "ridge_alpha": 0.001,
+  "primary_task": "hull_area",
+  "primary_budget": 200,
+  "primary_comparison": "higher_order minus pairwise held-out-family R2",
+  "interval_method": "Paired t interval over 20 replicate means, each averaging four held-out-family folds",
+  "python": "3.12.12",
+  "numpy": "2.2.5",
+  "pandas": "2.3.2",
+  "scipy": "1.16.2",
+  "sklearn": "1.7.2",
+  "matplotlib": "3.10.3"
+}

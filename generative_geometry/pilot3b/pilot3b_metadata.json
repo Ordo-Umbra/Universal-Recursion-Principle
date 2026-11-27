@@ -1,0 +1,42 @@
+{
+  "experiment": "Generative Geometry Pilot 3b",
+  "replicates": 60,
+  "families": [
+    "smooth_mixed",
+    "narrow_features",
+    "oscillatory"
+  ],
+  "initial_counts": [
+    6,
+    8,
+    12
+  ],
+  "budgets_nested": [
+    12,
+    24,
+    36
+  ],
+  "noise_levels": [
+    0.0,
+    0.03,
+    0.1
+  ],
+  "grid_size": 1200,
+  "strategies": [
+    "repeat_initial",
+    "random",
+    "widest_interval",
+    "largest_gradient",
+    "curvature_only",
+    "weighted_curvature",
+    "relational_curvature",
+    "hybrid"
+  ],
+  "focal_strategy": "relational_curvature",
+  "interval_confidence_method": "Two-sided paired t interval on replicate-level NMSE differences",
+  "python": "3.12.12",
+  "numpy": "2.2.5",
+  "pandas": "2.3.2",
+  "scipy": "1.16.2",
+  "matplotlib": "3.10.3"
+}
