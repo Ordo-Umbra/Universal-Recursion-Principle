@@ -1,0 +1,80 @@
+{
+  "experiment": "Generative Geometry Pilot 4d",
+  "protocol_date": "2026-11-23",
+  "replicates": 20,
+  "arms": [
+    "ordered",
+    "permuted"
+  ],
+  "permutation_seed_base": 93000000,
+  "permutation": "Independent deterministic point-label permutation per configuration in permuted arm",
+  "families": [
+    "convex_radial",
+    "interior_points",
+    "irregular_radial",
+    "elongated"
+  ],
+  "development_targets": [
+    "hull_perimeter",
+    "compactness",
+    "hull_count"
+  ],
+  "held_out_final_target": "hull_area",
+  "initial_expression": "dot",
+  "area_reference_expression": "abs(cross)",
+  "leaves": [
+    "dot",
+    "cross",
+    "u2",
+    "v2",
+    "w2"
+  ],
+  "unary_operations": [
+    "abs",
+    "square",
+    "sqrt_abs"
+  ],
+  "binary_operations": [
+    "multiply",
+    "divide",
+    "add",
+    "abs_diff"
+  ],
+  "maximum_expression_depth": 2,
+  "maximum_revision_rounds": 4,
+  "improvement_tolerance": 0.0001,
+  "development_budgets": [
+    40,
+    80
+  ],
+  "development_validation_per_fold": 80,
+  "development_score": "Median of 18 task/fold/budget R2 values clipped to [-1,1]",
+  "budgets_nested": [
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "representations": [
+    "pairwise",
+    "initial",
+    "refined",
+    "independent_search",
+    "unscaffolded",
+    "random_lineage",
+    "supplied_area",
+    "raw_quadratic"
+  ],
+  "ridge_alpha": 0.001,
+  "primary_budget": 200,
+  "primary_metric": "Paired replicate means of log(1+NRMSE); comparator minus refined",
+  "interval_method": "Two-sided 95% Student-t interval over replicate means across four folds",
+  "python": "3.12.12",
+  "numpy": "2.2.5",
+  "pandas": "2.3.2",
+  "scipy": "1.16.2",
+  "sklearn": "1.7.2",
+  "matplotlib": "3.10.3"
+}
