@@ -1,0 +1,12 @@
+Completed 1/2 replicates
+Completed 2/2 replicates
+Authorization required, but no authorization protocol specified
+
+
+Primary comparison:
+constructor_source focus_aggregation comparator_aggregation  mean_log_error_difference  ci95_low  ci95_high  replicate_win_fraction  exact_sign_p
+     supplied_area      fully_sorted                current                   0.113793  -0.25963   0.487215                     1.0           0.5
+
+Reproduction checks: {'pilot4e_current_rows_checked': 384, 'pilot4e_max_absolute_metric_difference': 3.552713678800501e-15, 'pilot4d_ordered_rows_checked': 48, 'pilot4d_max_absolute_metric_difference': 1.1102230246251565e-16}
+
+Saved results to /mnt/agents/output/generative_geometry_pilot4f/smoke

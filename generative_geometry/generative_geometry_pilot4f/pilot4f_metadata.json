@@ -1,0 +1,71 @@
+{
+  "experiment": "Generative Geometry Pilot 4f",
+  "protocol_date": "2026-11-27",
+  "replicates": 20,
+  "environment": "permuted with ordered supplied-area reference",
+  "constructor_search": "none; frozen Pilot 4e outputs",
+  "constructor_sources": [
+    "supplied_area",
+    "initial",
+    "greedy",
+    "neutral_drift",
+    "diversity_archive",
+    "sampled_lookahead",
+    "independent_search",
+    "unscaffolded"
+  ],
+  "supplied_aggregations": [
+    "current",
+    "pairwise_sorted",
+    "constructor_sorted",
+    "fully_sorted",
+    "constructor_orbit_sorted",
+    "fully_orbit_sorted"
+  ],
+  "frozen_aggregations": [
+    "current",
+    "pairwise_sorted",
+    "constructor_orbit_sorted",
+    "fully_orbit_sorted"
+  ],
+  "families": [
+    "convex_radial",
+    "interior_points",
+    "irregular_radial",
+    "elongated"
+  ],
+  "held_out_final_target": "hull_area",
+  "budgets_nested": [
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "ridge_alpha": 0.001,
+  "primary_budget": 200,
+  "primary_comparison": "supplied_area fully_sorted versus current",
+  "primary_metric": "Paired replicate means of log(1+NRMSE); current minus invariant",
+  "interval_method": "Two-sided 95% Student-t interval over replicate means across four folds",
+  "invariance_tolerance": 1e-12,
+  "required_invariance_checks": 28,
+  "diagnostic_non_invariance_checks": 12,
+  "permuted_final_evaluations": 16320,
+  "ordered_reference_evaluations": 480,
+  "reproduction": {
+    "comparison_rule": "absolute difference / max(1, absolute previous value) <= 1e-10",
+    "pilot4e_current_rows_checked": 3840,
+    "pilot4e_max_absolute_metric_difference": 7.275957614183426e-12,
+    "pilot4e_max_scaled_metric_difference": 2.433338010113808e-16,
+    "pilot4d_ordered_rows_checked": 480,
+    "pilot4d_max_absolute_metric_difference": 1.1102230246251565e-16,
+    "pilot4d_max_scaled_metric_difference": 1.1102230246251565e-16
+  },
+  "python": "3.12.12",
+  "numpy": "2.2.5",
+  "pandas": "2.3.2",
+  "scipy": "1.16.2",
+  "sklearn": "1.7.2",
+  "matplotlib": "3.10.3"
+}
