@@ -1,0 +1,90 @@
+{
+  "experiment": "Generative Geometry Pilot 4e",
+  "protocol_date": "2026-11-23",
+  "replicates": 20,
+  "environment": "permuted",
+  "permutation_seed_base": 93000000,
+  "proposal_budget_per_condition_run": 500,
+  "neutral_local_tolerance": 0.02,
+  "neutral_cumulative_tolerance": 0.05,
+  "lookahead_children": 5,
+  "lookahead_grandchildren_per_valid_child": 4,
+  "lookahead_descendant_penalty": 0,
+  "symmetry_classes": [
+    "symmetric_nonnegative",
+    "symmetric_signed",
+    "antisymmetric",
+    "asymmetric_other"
+  ],
+  "families": [
+    "convex_radial",
+    "interior_points",
+    "irregular_radial",
+    "elongated"
+  ],
+  "development_targets": [
+    "hull_perimeter",
+    "compactness",
+    "hull_count"
+  ],
+  "held_out_final_target": "hull_area",
+  "initial_expression": "dot",
+  "area_reference_expression": "abs(cross)",
+  "leaves": [
+    "dot",
+    "cross",
+    "u2",
+    "v2",
+    "w2"
+  ],
+  "unary_operations": [
+    "abs",
+    "square",
+    "sqrt_abs"
+  ],
+  "binary_operations": [
+    "multiply",
+    "divide",
+    "add",
+    "abs_diff"
+  ],
+  "maximum_expression_depth": 2,
+  "improvement_tolerance": 0.0001,
+  "development_budgets": [
+    40,
+    80
+  ],
+  "development_validation_per_fold": 80,
+  "development_score": "Median of 18 task/fold/budget R2 values clipped to [-1,1]",
+  "budgets_nested": [
+    25,
+    50,
+    100,
+    200,
+    500,
+    1000
+  ],
+  "representations": [
+    "pairwise",
+    "initial",
+    "greedy",
+    "neutral_drift",
+    "diversity_archive",
+    "sampled_lookahead",
+    "independent_search",
+    "unscaffolded",
+    "supplied_area",
+    "raw_quadratic"
+  ],
+  "ridge_alpha": 0.001,
+  "primary_budget": 200,
+  "primary_comparison": "diversity_archive versus greedy",
+  "primary_metric": "Paired replicate means of log(1+NRMSE); comparator minus focus",
+  "interval_method": "Two-sided 95% Student-t interval over replicate means across four folds",
+  "python": "3.12.12",
+  "numpy": "2.2.5",
+  "pandas": "2.3.2",
+  "scipy": "1.16.2",
+  "sklearn": "1.7.2",
+  "matplotlib": "3.10.3"
+}
